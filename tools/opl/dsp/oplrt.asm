@@ -1953,8 +1953,11 @@ promote_done:
         move    a1,x:early_state
         jmp     refill_render
 
-; Service the next refill while waiting for the SSI half or between render
-; blocks. READY is sent without waiting for the host's next 1 kHz tick.
+; Service the next refill while waiting for the SSI half, never between render
+; blocks: the host's blast of a burst of events (about 6 us a word on the
+; calibrated Falcon) would stall the render for as long as it takes, which a
+; dense passage cannot afford. READY is sent without waiting for the host's
+; next 1 kHz tick.
 ; Once its first word arrives, receive the paced blast into disjoint staging
 ; memory. SSI tracking continues during every host wait. Queries and STOP
 ; are deferred until all acknowledged periods have rendered.
@@ -2120,7 +2123,6 @@ rp_go:
         move    a1,x:frame_index
         do      #PERIOD_BLOCKS,rp_rendered
         jsr     render_block
-        jsr     early_receive
         jsr     track_halves            ; so a crossing mid-render is seen within a block
         nop
 rp_rendered:
