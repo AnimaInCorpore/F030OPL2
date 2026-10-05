@@ -131,7 +131,8 @@ enum { CH_MODE = 0, CH_CONN = 1, CH_FBMUL = 2, CH_ROUTE = 3 };   // ROUTE: 1 lef
 // Scalars in internal X the host writes.
 enum {
 	SC_TREMOLO_SHIFT = 0x0010, SC_PAUSED = 0x0011, SC_CHANNELS = 0x0012, SC_MASTER_GAIN = 0x0013,
-	SC_RHYTHM = 0x0030           // nonzero: channels six to eight are the rhythm section
+	SC_RHYTHM = 0x0030,          // nonzero: channels six to eight are the rhythm section
+	SC_RENDER_AHEAD = 0x0096     // stream only: nonzero renders block by block as the SSI ring frees
 };
 
 enum EnvelopeState { kAttack = 0, kDecay = 1, kSustain = 2, kRelease = 3 };

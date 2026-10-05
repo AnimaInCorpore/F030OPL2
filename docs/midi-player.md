@@ -5,7 +5,7 @@ Files, or acts as a synthesizer for the Falcon's own MIDI IN port, and the DSP
 renders the OPL2 at 49.17 kHz into the DAC.
 
 ```
-F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin]
+F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n]
 ```
 
 - With a file it plays the file and returns to the desktop at the end (or on a
@@ -15,6 +15,12 @@ F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin]
   An ST, a PC interface or any keyboard on the Falcon's MIDI IN port will do;
   the Falcon itself is the synthesizer. A plain ST cannot be the synthesizer,
   because the OPL2 runs on the Falcon's DSP.
+- The DSP renders ahead of the codec by default when playing a file, which gave
+  the real songs 4-11 ms of slack instead of about half a millisecond; `-n`
+  turns that off, `-a` turns it on for live input. It costs latency (a file does
+  not mind), so live input defaults to off. An `AHEAD.FLG` or `NOAHEAD.FLG`
+  beside the program does the same for Hatari, which passes no arguments. See
+  [the render-ahead ring](speed-quality.md#render-ahead-ring-f030sids-stream-design).
 - `-i` feeds a raw MIDI byte file through the live path at the port's rate
   (3,125 bytes a second), which is how the live path is gated; a `MIDIIN.RAW`
   beside the program is taken as that file.
@@ -108,8 +114,10 @@ The checksum is the sum of every limited output word over the whole run, so a
 match means the 68030's register writes, the decoder events, the stream
 protocol and the DSP render all agree with the host reference. The gate also
 checks that the player's uploaded tables are byte for byte the bench fixture's.
-The tightest period of `song.mid` leaves 58 frames (1.2 ms) of slack, at the
-start where the reset's 397 events arrive in one period.
+The tightest period of `song.mid` leaves 191 frames (3.9 ms) of slack with
+render-ahead (58, at the start where the reset's 397 events arrive in one
+period, without). Real songs from Falcon 3 and Ultima 4 (not shipped here) play
+the same way: eight were gated, all bit-exact with no late period.
 
 ### Not established
 

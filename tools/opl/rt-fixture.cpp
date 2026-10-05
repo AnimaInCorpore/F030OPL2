@@ -10,7 +10,10 @@
 //
 // usage: opl-rt-fixture <trace|stress|paths|rhythm|phase|layered> <opldata.bin> <expect.bin>
 //                       [--trace opl-writes.ev] [--from S] [--seconds N]
-//                       [--chunk-blocks N] [--play playdata.bin]
+//                       [--chunk-blocks N] [--play playdata.bin] [--render-ahead]
+//
+// --render-ahead adds an upload block that sets the stream kernel's
+// render-ahead flag, so the stream gates exercise that mode.
 //
 // --from starts the trace's window S seconds in, on the register image the
 // earlier writes left.
@@ -409,6 +412,7 @@ int main(int argc, char **argv) {
 	const std::string scenario = argv[1];
 	const char *trace = nullptr;
 	const char *play = nullptr;
+	bool renderAhead = false;
 	double seconds = 4.0, from = 0.0;
 	// The bench output area holds 4,096 frames.
 	const uint32 kMaxChunkBlocks = 4096 / P::kBlockFrames;
@@ -424,6 +428,8 @@ int main(int argc, char **argv) {
 			chunkBlocks = (uint32)std::atoi(argv[++i]);
 		else if (!std::strcmp(argv[i], "--play") && i + 1 < argc)
 			play = argv[++i];
+		else if (!std::strcmp(argv[i], "--render-ahead"))
+			renderAhead = true;
 	}
 	if (chunkBlocks < 1 || chunkBlocks > kMaxChunkBlocks)
 		fail("chunk blocks exceed the bench output area");
@@ -481,7 +487,7 @@ int main(int argc, char **argv) {
 	if (!out.file)
 		fail("cannot create the data image");
 	out.word(kMagic);
-	out.word(17);   // upload blocks
+	out.word(renderAhead ? 18 : 17);   // upload blocks
 
 	out.word(0); out.word(P::SC_TREMOLO_SHIFT); out.word(4);
 	out.word(4); out.word(0); out.word(channelCount); out.word(0x7fffff);
@@ -544,6 +550,10 @@ int main(int argc, char **argv) {
 	out.word(0); out.word(P::kRhythmPhases); out.word(12);
 	for (int i = 0; i < 12; ++i)
 		out.word((uint32)P::rhythmPhase(i));
+	if (renderAhead) {
+		out.word(0); out.word(P::SC_RENDER_AHEAD); out.word(1);
+		out.word(1);
+	}
 
 	// ---- chunks, and the reference output alongside
 	Writer expect;

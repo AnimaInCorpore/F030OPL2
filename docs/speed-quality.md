@@ -94,6 +94,9 @@ operators in music without tremolo or vibrato.
 
 ## What else F030SID and F030MXDRV offer: an investigation (2026-10-05)
 
+(Item 1 of the ranking below has since been implemented; its section follows
+the list.)
+
 Real music exposed a limit the synthetic gates did not: Falcon 3's `C.MID`
 played with one late period and `F.MID` with four, though every output word
 matched the reference. A period-by-period profile (a one-shot Hatari DSP
@@ -123,13 +126,8 @@ and without it, so that check's tolerance, not the change, is the issue.
 
 **Ranked, not yet done.**
 
-1. *Render-ahead ring at block granularity* (SID's protocol v7). The stream
-   renders a half only once the transmitter leaves it, so idle time cannot be
-   banked: a period that costs more than one period's time is late however
-   quiet the ones before it were. A ring the renderer fills block by block as
-   the transmitter frees space carries up to two periods of lead into a
-   burst. This is the largest remaining measure, and it is what would widen
-   the slack above.
+1. *Render-ahead ring at block granularity* (SID's protocol v7): **done, see
+   below.**
 2. *Cycle-stamped events with a horizon, pushed continuously* (SID's
    `STREAM_PUSH`). Removes the per-period READY handshake and cuts live-MIDI
    latency from about two periods (31 ms) to a few blocks, since an event no
@@ -146,3 +144,43 @@ and without it, so that check's tolerance, not the change, is the issue.
    pointers of `load_carrier*`, about 5-6 cycles per frame.
 6. *Not worth it here:* MXDRV's Timer-A producer queue (this host does a few
    hundred cycles of work per period) and SID's polyBLEP (AGENTS.md).
+
+## Render-ahead ring (F030SID's stream design)
+
+The stream rendered a half of the SSI ring only once the transmitter had left
+it, so a period had exactly one period of time and idle time could not be
+banked: a period that cost more was late however quiet the ones before it were.
+SID's stream instead renders whenever the ring has room. With a host-set flag
+(`X:$0096`, `OplPractical::SC_RENDER_AHEAD`) this kernel now does the same, at
+block granularity: before each 32-frame block `slot_wait` returns once the
+transmitter has played that block's 64 ring words (immediately in the half the
+transmitter is not in, once it is past the slot in the half it is in), and until
+then the DSP does the host's work and watches the transmitter. The period is
+still the unit of the events and the lateness count; a half is judged late by
+a `caught_a`/`caught_b` flag the transmitter-tracking code sets when the
+transmitter enters it stale (with render-ahead the transmitter may sit in the
+half all along, so its being there says nothing). The slack the kernel reports
+is now the ring words before the transmitter reaches the half just rendered,
+without the old clamp, so it runs up to two periods.
+
+Off by default for the stream gates and for live MIDI, on by default when
+F030MID plays a file (`-a`, `-n`, `AHEAD.FLG`, `NOAHEAD.FLG`). It costs
+latency: the host runs further ahead of the audio (up to about three periods,
+47 ms, instead of two), which a file does not mind and a keyboard does.
+
+Measured under the calibrated Hatari, with every DSP checksum equal to the host
+reference's and no late period:
+
+| song | tightest slack, off | tightest slack, render-ahead |
+| --- | ---: | ---: |
+| Falcon 3 `C.MID`, 34 s | 24 frames (0.5 ms) | 428 frames (8.7 ms) |
+| Falcon 3 `F.MID`, 56 s | 35 frames (0.7 ms) | 261 frames (5.3 ms) |
+| `song.mid`, Falcon 3 `A`, `B`, `D`, `E`, Ultima 4 `Castles`, `Combat` | | 191-538 frames (3.9-10.9 ms) |
+
+The opening of `song.mid`, whose reset burst was its tightest period (58
+frames), now leaves 191. The stress and rhythm streams pass with the flag
+(`rt-stream-gate.py --render-ahead`; their minimum slack is set by the opening
+and does not show the benefit). The stall check, whose expectation drops by one
+period in this mode (the transmitter plays the extra banked period before any
+replay), counts 59 of 60.7 against 61 of 62.7 without it: the same 1.7-period
+shortfall as before this change, which remains unexplained.

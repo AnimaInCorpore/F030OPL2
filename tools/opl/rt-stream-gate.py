@@ -112,6 +112,8 @@ def main():
     parser.add_argument("--from", dest="start", type=float, default=0.0,
                         help="start the trace's window this many seconds in, on the register image left by then")
     parser.add_argument("--vbls", type=int, default=20000)
+    parser.add_argument("--render-ahead", action="store_true",
+                        help="render block by block as the SSI ring frees instead of waiting for each half")
     parser.add_argument("--profile", action="store_true",
                         help="profile the DSP over the whole stream, SSI interrupts, tracking and host port "
                              "included, and save profile.txt; read it with profile-labels.py")
@@ -128,7 +130,8 @@ def main():
                               str(case / "OPLDATA.BIN"), str(case / "EXPECT.BIN")]
                              + (["--trace", str(args.trace.resolve()), "--from", str(args.start)]
                                 if args.scenario == "trace" else [])
-                             + ["--seconds", str(args.seconds), "--play", str(case / "PLAYDATA.BIN")],
+                             + ["--seconds", str(args.seconds), "--play", str(case / "PLAYDATA.BIN")]
+                             + (["--render-ahead"] if args.render_ahead else []),
                              capture_output=True, text=True, check=True)
     shape = json.loads(fixture.stdout)
     if args.starve:
@@ -172,6 +175,9 @@ def main():
         # The period in flight when the host went quiet still plays fresh, so
         # the replays are the stall's length in periods, give or take one.
         expected = seconds / PERIOD_SECONDS - 1
+        # Rendering ahead banks a further period: the transmitter plays it fresh before any replay.
+        if args.render_ahead:
+            expected -= 1
         stall = {
             "withheld_frames": args.starve,
             "seconds": seconds,
@@ -204,6 +210,7 @@ def main():
         # the half it rendered: the stream's tightest deadline, the host's
         # transport included. Zero once the transmitter caught a render; the
         # replays of a host stall are late periods but render nothing.
+        "render_ahead": args.render_ahead,
         "block_frames": shape["block_frames"],
         "min_slack_frames": slack_words // 2,
         "min_slack_ms": round(slack_words / 2 / CODEC_RATE * 1000.0, 3),

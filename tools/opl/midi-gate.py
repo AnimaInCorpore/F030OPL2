@@ -59,6 +59,8 @@ def main():
                         help="play the file as live MIDI input (F030MID -i): a reproducible stand-in for the "
                              "port, at 3,125 bytes a second")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--ahead", choices=("default", "on", "off"), default="default",
+                        help="the DSP's render-ahead mode: the player's default (on for a file), or forced")
     parser.add_argument("--tos", type=Path, default=HERE.parent.parent / "build/midi-tos/F030MID.TOS")
     parser.add_argument("--vbls", type=int, default=6000)
     args = parser.parse_args()
@@ -87,6 +89,10 @@ def main():
     tables_match = fixture_image.read_bytes().startswith(host_image.read_bytes())
     shutil.copy(args.tos, case / "F030MID.TOS")
     shutil.copy(args.midi, case / ("MIDIIN.RAW" if args.raw else "SONG.MID"))
+    for flag in ("AHEAD.FLG", "NOAHEAD.FLG"):
+        (case / flag).unlink(missing_ok=True)
+    if args.ahead != "default":
+        (case / ("AHEAD.FLG" if args.ahead == "on" else "NOAHEAD.FLG")).write_bytes(b"1")
 
     stop = listing_symbol(HERE / "dsp/OPLRT.LST", "stream_stopped")
     (case / "start.ini").write_text(f"db pc = ${stop:04x} :once :trace :file {(case / 'end.ini').resolve()}\n")
@@ -113,6 +119,7 @@ def main():
             "midi/opl-upload.h", "midi/gm-bank.h", "dsp/oplrt.asm")},
         "midi": args.midi.name,
         "tables_match_fixture": tables_match,
+        "render_ahead": args.ahead,
         "song_seconds": expected["song_seconds"],
         "periods_expected": expected["periods"],
         "periods_submitted": periods,

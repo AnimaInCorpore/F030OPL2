@@ -109,6 +109,7 @@ build/midi-test/song.mid: $(MIDI)/make-test-midi.py
 
 midi-gate: midi-host midi-tos build/midi-test/song.mid
 	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/song.mid --output build/midi-gate $(GATE_ARGS)
+	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/song.mid --ahead off --output build/midi-gate-off $(GATE_ARGS)
 midi-live-gate: midi-host midi-tos build/midi-test/song.mid
 	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/live.bin --raw --output build/midi-live-gate $(GATE_ARGS)
 

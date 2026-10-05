@@ -1,6 +1,6 @@
 // F030MID: a real-time MIDI player for the Falcon's emulated AdLib.
 //
-//   F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin]
+//   F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n]
 //
 // With a file it plays it; with -l, or with no file and no SONG.MID beside the
 // program, it is a synthesizer for the Falcon's MIDI IN port: whatever arrives
@@ -16,6 +16,13 @@
 // byte file through the same live path at the port's 3,125 bytes a second, for
 // a reproducible test (Hatari's MIDI input needs PortMidi): midi-gate.py. A
 // MIDIIN.RAW beside the program, when none is named, is taken as that file.
+//
+// The DSP renders ahead of the codec, block by block as the ring frees, by
+// default when playing a file (-a forces it, -n forbids it): a dense passage
+// can then borrow the time the quiet ones before it left over, at the price of
+// latency, which a file does not mind and a keyboard does. An AHEAD.FLG or
+// NOAHEAD.FLG beside the program stands in for -a and -n (Hatari passes no
+// arguments).
 //
 // RESULT.BIN, written when a file ends, carries the DSP's counters for
 // midi-gate.py: status (late periods << 12 | periods rendered), the output
@@ -97,10 +104,16 @@ struct Uploader {
 	}
 };
 
+bool g_render_ahead = false;
+
 long uploadSuper() {
 	Uploader u;
 	// An OPL2 never selects the OPL3 waveforms: leave them out.
 	uploadTables(u, 9, false);
+	if (g_render_ahead) {
+		const uint32_t on = 1;
+		u.block(0, OplPractical::SC_RENDER_AHEAD, &on, 1);
+	}
 	return 0;
 }
 
@@ -230,10 +243,15 @@ int main(int argc, char **argv) {
 	const char *file = 0;
 	bool live = false;
 	long seconds = -1;
+	int ahead = -1;            // -1: the default for the mode; 0 or 1: asked for
 	const char *rawFile = 0;
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "-l"))
 			live = true;
+		else if (!strcmp(argv[i], "-a"))
+			ahead = 1;
+		else if (!strcmp(argv[i], "-n"))
+			ahead = 0;
 		else if (!strcmp(argv[i], "-i") && i + 1 < argc) {
 			rawFile = argv[++i];
 			live = true;
@@ -269,7 +287,21 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 	}
-	printf("F030MID: %s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file");
+	if (ahead < 0) {
+		FILE *flag = fopen("AHEAD.FLG", "rb");
+		if (flag) {
+			fclose(flag);
+			ahead = 1;
+		}
+		flag = fopen("NOAHEAD.FLG", "rb");
+		if (flag) {
+			fclose(flag);
+			ahead = 0;
+		}
+	}
+	g_render_ahead = ahead < 0 ? !live : ahead != 0;
+	printf("F030MID: %s%s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file",
+	       g_render_ahead ? ", rendering ahead" : "");
 
 	if (!bootDsp())
 		return 1;

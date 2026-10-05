@@ -236,6 +236,9 @@ current_events: ds      1               ; the current event table, $2000 or $300
 deferred_command: ds    1
 noise_pending:  ds      1               ; silent frames, modulo $7fffff
 noise_catchup_bits: ds  1
+render_ahead:   ds      1               ; host: nonzero renders block by block as the ring frees (below)
+caught_a:       ds      1               ; the transmitter entered half A stale while it was being rendered
+caught_b:       ds      1
 
 ; ------------------------------------------------------------ entry vectors
 
@@ -1828,8 +1831,11 @@ css_cleared:
         move    a1,x:early_state
         move    #>STREAM_EVENT_BASE,a
         move    a1,x:current_events
-        move    #>SSI_HALF_WORDS,a
+        move    #>SSI_RING_WORDS,a
         move    a1,x:min_slack
+        clr     a
+        move    a1,x:caught_a
+        move    a1,x:caught_b
         move    #>1,a
         move    a1,x:stream_next_half   ; half A plays silence first
         move    #>emit_block_stream,a
@@ -2082,7 +2088,22 @@ rp_done:
 render_period:
         move    x:stream_primed,a
         tst     a
-        jne     rp_wait
+        jeq     rp_unprimed
+        ; Render ahead: no wait for the transmitter to leave the half. Each
+        ; block waits only until its own slot has been played (slot_wait), so
+        ; the renderer follows the transmitter through the half it is about
+        ; to overwrite and can bank the time a quiet period leaves over.
+        move    x:render_ahead,a
+        tst     a
+        jeq     rp_wait
+        move    x:stream_next_half,b
+        move    #>SSI_RING,a
+        tst     b
+        jeq     rp_ahead_base
+        move    #>SSI_RING+SSI_HALF_WORDS,a
+rp_ahead_base:
+        jmp     rp_go
+rp_unprimed:
         move    #>1,a
         move    a1,x:stream_primed
 rp_first:
@@ -2121,26 +2142,36 @@ rp_go:
         move    a1,x:pcm_read
         clr     a
         move    a1,x:frame_index
+        move    a1,x:caught_a
+        move    a1,x:caught_b
         do      #PERIOD_BLOCKS,rp_rendered
+        jsr     slot_wait
         jsr     render_block
         jsr     track_halves            ; so a crossing mid-render is seen within a block
         nop
 rp_rendered:
         ; The period is judged against the tracker's own view of the
         ; transmitter, not a second look at r6, so the two cannot disagree:
-        ; if the transmitter entered this half before the render finished,
-        ; track_halves has seen it and counted the period late on entry;
-        ; otherwise the half is fresh, and its entry is on time whenever it
-        ; comes.
+        ; if the transmitter entered this half stale while it was being
+        ; rendered, track_halves has seen it, counted the period late on
+        ; entry and flagged the half; otherwise the half is fresh, and its
+        ; entry is on time whenever it comes. (With render-ahead the
+        ; transmitter may sit in the half all along, playing the period
+        ; before last, so its being there proves nothing.)
         jsr     track_halves
         move    x:stream_next_half,b
-        move    x:tx_half_seen,a
-        cmp     b,a
-        jeq     rp_caught               ; caught mid-render: already late
+        tst     b
+        jne     rp_check_b
+        move    x:caught_a,a
+        jmp     rp_checked
+rp_check_b:
+        move    x:caught_b,a
+rp_checked:
+        tst     a
+        jne     rp_caught               ; caught mid-render: already late
         ; The slack: the ring words the transmitter still has to play before
         ; it reaches the half just rendered, counted back from that half's
-        ; first word modulo the ring. More than a half means it has just got
-        ; there after all.
+        ; first word modulo the ring: up to two periods when rendering ahead.
         move    #>SSI_RING,a
         tst     b
         jeq     rp_slack_start
@@ -2152,10 +2183,6 @@ rp_slack_start:
         move    #>SSI_RING_WORDS,x0
         add     x0,a
 rp_slack_ahead:
-        move    #>SSI_HALF_WORDS,x0
-        cmp     x0,a
-        jle     rp_slack_note
-        clr     a
 rp_slack_note:
         move    x:min_slack,x0
         cmp     x0,a
@@ -2273,6 +2300,16 @@ th_fresh:
         move    a1,x:stream_live
         jmp     th_done
 th_stale:
+        ; whichever half it was, a render that is still filling it is caught
+        move    #>1,x0
+        move    x:tx_half_seen,a
+        tst     a
+        jne     th_stale_b
+        move    x0,x:caught_a
+        jmp     th_stale_counted
+th_stale_b:
+        move    x0,x:caught_b
+th_stale_counted:
         move    x:stream_live,a
         tst     a
         jeq     th_done                 ; still the opening silence
@@ -2286,6 +2323,43 @@ th_done:
         move    x:th_a1,a1
         move    x:th_a2,a2
 th_off:
+        rts
+
+; Render-ahead: returns once the block about to be written, the 2 * BLOCK_FRAMES
+; words at out_pointer, has been played by the transmitter. In the half the
+; transmitter is not in, that is always so (the renderer works in order, so
+; whatever that half held has played by the time the previous period is
+; complete); in the half it is in, it is so once the transmitter is past the
+; slot and the word it has loaded. Until then the DSP does the host's work and
+; watches the transmitter. Clobbers a, b and x0, as the receive it calls does.
+slot_wait:
+        move    x:render_ahead,a        ; the short addresses are all taken: a plain test
+        tst     a
+        jeq     sw_free
+sw_check:
+        move    r6,a
+        move    #>SSI_RING+SSI_HALF_WORDS,x0
+        cmp     x0,a                    ; the transmitter in A (less) or in B
+        jlt     sw_tx_a
+        move    x:out_pointer,b
+        cmp     x0,b
+        jlt     sw_free                 ; writing A while it is in B
+        jmp     sw_same
+sw_tx_a:
+        move    x:out_pointer,b
+        cmp     x0,b
+        jge     sw_free                 ; writing B while it is in A
+sw_same:
+        move    x:out_pointer,b
+        move    #>2*BLOCK_FRAMES+2,x0
+        add     x0,b                    ; the end of the slot, and the word in flight
+        move    r6,a
+        cmp     b,a
+        jge     sw_free
+        jsr     early_receive
+        jsr     track_halves
+        jmp     sw_check
+sw_free:
         rts
 
 ; Waits on the host that keep tracking the transmitter. Reached through
