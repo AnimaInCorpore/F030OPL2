@@ -1,5 +1,12 @@
 # AdLib on the Falcon DSP: capture, kernels, transport, integration
 
+> **Historical (imported into F030OPL2).** This is the ScummVM investigation as it
+> stood when the work was imported: its game, capture and `devtools/` paths refer to
+> the original ScummVM checkout, and its figures are not results of this checkout.
+> What this project has measured since, and the MIDI player built on the kernel, are
+> in [../../README.md](../../README.md), [../../docs/speed-quality.md](../../docs/speed-quality.md)
+> and [../../docs/midi-player.md](../../docs/midi-player.md).
+
 2026-09-16. The [OPL3 investigation](../../docs/opl3-feasibility.md) in
 stages: the register stream ScummVM's real AdLib driver produces for
 Fate of Atlantis, an exact OPL kernel checked against Nuked-OPL3, its

@@ -90,10 +90,16 @@
     "Git metadata optional in an uncommitted project",
     "Parallel stereo ring writes/checksum accumulation",
     "Parallel noise table read/XOR",
-    "Inline single-use noise jump in hardware loop"
+    "Inline single-use noise jump in hardware loop",
+    "Rhythm noise stage operands cycle through a Y-memory ring by parallel moves (stage_drum_noise)",
+    "Stream: refill received after the render, not between blocks",
+    "Stream: optional render-ahead (slot_wait, caught flags, X:$0096), --render-ahead in the stream gate and fixture",
+    "rt-stream-gate.py --profile; profile-labels.py",
+    "Added since the import, not in the manifest's file list: tools/opl/midi/ (MIDI player, from ScummVM's GPL AdLib bank), midi-gate.py, midi-corpus.py, midi-hatari.py"
   ],
   "toolchain_submodule": {
     "url": "https://github.com/AnimaInCorpore/f030dsp3d.git",
     "commit": "9a87bd904e515224b02272ecfa42bf143215db5e"
-  }
+  },
+  "note": "sha256_lf values are of the files as imported; later changes are in adaptations and git history"
 }

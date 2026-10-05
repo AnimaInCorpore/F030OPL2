@@ -4,6 +4,19 @@ SID's measured frame costs include work that average synthesis benchmarks can
 miss: SSI interrupts, output writes, diagnostics and bursts of register events.
 Its quality work also shows why reducing sample rate to save cycles is costly.
 
+Contents, in the order the work was done, with where it stands:
+
+- the output loop and rhythm-noise optimizations, and the noise stage's operand
+  ring (done, bit exact);
+- where the remaining cost is, and an investigation of what else F030SID and
+  F030MXDRV offer, with a ranked list (items 1 and 3 done; 2, 4 and 5 open);
+- the render-ahead ring, which banks the idle time quiet periods leave (done,
+  off by default, on when F030MID plays a file);
+- the removal of the reset-event burst at start (done).
+
+All figures are the calibrated Hatari's model, not hardware, and every change was
+checked bit for bit against the practical host reference.
+
 ## Implemented output-loop optimization
 
 The nine-channel output loop previously wrote the same limited accumulator to
@@ -160,6 +173,9 @@ transmitter enters it stale (with render-ahead the transmitter may sit in the
 half all along, so its being there says nothing). The slack the kernel reports
 is now the ring words before the transmitter reaches the half just rendered,
 without the old clamp, so it runs up to two periods.
+
+The DSP program is now 2,148 words (2,069 at the import); the internal-program
+limit and the check that keeps the kernel clear of the OPL3 Y tables still hold.
 
 Off by default for the stream gates and for live MIDI, on by default when
 F030MID plays a file (`-a`, `-n`, `AHEAD.FLG`, `NOAHEAD.FLG`). It costs

@@ -1,4 +1,5 @@
 {
+  "note": "Recorded at the import, before the optimizations in docs/speed-quality.md (rhythm stream: one late period, DSP program 2,069 words). Later results are in that document and were produced by the gates, not by editing this file.",
   "dsp_bench": {
     "date": "2026-10-05",
     "gate": "practical OPL kernel on the emulated Falcon DSP56001: exactness and cycle cost",

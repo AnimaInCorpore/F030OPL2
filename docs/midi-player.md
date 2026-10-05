@@ -25,18 +25,29 @@ F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n]
   (3,125 bytes a second), which is how the live path is gated; a `MIDIIN.RAW`
   beside the program is taken as that file.
 
-## Audition on a PC
+## Listen
 
-The same engine, decoder and reference chip are built for the host:
+In the calibrated Hatari, at real speed with sound:
 
 ```sh
-make midi-host
-tools/opl/build/headless/opl-midi song.mid --wav song.wav
+make midi-tos
+make midi-hatari MIDI_FILE=song.mid
 ```
 
-writes the DSP's output (16-bit stereo, 49,170 Hz) as a WAV. `--play`/`--data`
-write `PLAYDATA.BIN`/`OPLDATA.BIN` so that the older `f030opl2.tos` stream
-harness can play the same file too.
+`midi-hatari.py` copies the program and the song into `build/midi-play` and starts
+Hatari; the player returns to the desktop when the song ends. (It needs the
+calibrated Hatari that the gates find beside this checkout; Hatari passes no
+arguments to a program, so the file is staged as `SONG.MID`.) On a PC, without the
+emulator, the same engine, decoder and reference chip are built for the host:
+
+```sh
+make midi-wav MIDI_FILE=song.mid WAV=song.wav
+```
+
+writes the DSP's output (16-bit stereo, 49,170 Hz) as a WAV through
+`tools/opl/build/headless/opl-midi`, whose `--play`/`--data` options write
+`PLAYDATA.BIN`/`OPLDATA.BIN` so that the older `f030opl2.tos` stream harness can
+play the same file too.
 
 ## How it works
 
@@ -49,8 +60,9 @@ MIDI IN / .MID --> engine (midi-opl.h) --OPL register writes--> decoder
   range through RPN 0, modulation, sustain pedal), nine voices, the General MIDI
   instrument bank. Everything it does is a sequence of OPL2 register writes
   stamped with a codec-rate frame. Integer arithmetic only; no heap.
-- **`midi-file.h`**: Standard MIDI Files (format 0 and 1, ticks per quarter
-  note) merged into one time-ordered stream, with tick-to-frame conversion done
+- **`midi-file.h`**: Standard MIDI Files (format 0 and 1, and format 2 of a
+  single track, ticks per quarter note; a `MIDI` wrapper as in `.GMD` files is
+  looked through) merged into one time-ordered stream, with tick-to-frame conversion done
   in exact integers (a frame is a ratio of integers, so a long file does not
   drift). `MidiStream` parses a live byte stream (running status, real-time
   bytes, system exclusive).
@@ -60,8 +72,9 @@ MIDI IN / .MID --> engine (midi-opl.h) --OPL register writes--> decoder
 - **`f030mid.cpp`**: the Falcon program. It boots the DSP kernel, uploads the
   tables with direct host-port writes, routes the SSI to the DAC, and sends one
   period per refill. The DSP's READY handshake paces the host, so a file plays at
-  exactly the DAC's speed and a live note is heard within about two periods
-  (31 ms) of its byte arriving. Silent PCM flags keep the OPL as the whole song.
+  exactly the DAC's speed. Silent PCM flags keep the OPL as the whole song. The
+  first period carries only the nine channel-routing words of the chip's reset:
+  the uploaded tables hold the rest.
 
 The 68030 build and the host build compile the same headers; the Falcon program
 is C++ built with the MiNT cross compiler (`M68K_CXX` in `local.mk`). The
@@ -115,8 +128,8 @@ match means the 68030's register writes, the decoder events, the stream
 protocol and the DSP render all agree with the host reference. The gate also
 checks that the player's uploaded tables are byte for byte the bench fixture's.
 The tightest period of `song.mid` leaves 225 frames (4.6 ms) of slack with
-render-ahead (58 without). Real songs from Falcon 3 and Ultima 4 (not shipped here) play
-the same way: eight were gated, all bit-exact with no late period.
+render-ahead (58 without). Real songs, which are not shipped here, play the same
+way (see below).
 
 ### Songs to try
 
@@ -146,6 +159,16 @@ Fighter songs: no late period, tightest 340 frames. Earlier runs played Falcon 3
 rendered-period count in twelve bits, so the gate compares it modulo 4,096 for
 songs over about 64 s.
 
+### Latency
+
+A live note's delay is the wait for the host's next period (up to 15.6 ms), the
+period's own length before the DSP renders it, and the ring: roughly 25 to 45
+ms without render-ahead, which is why live input defaults to it off, and up to a
+period or two more with it. **This has not been measured.** The ranked list in
+[speed-quality](speed-quality.md#what-else-f030sid-and-f030mxdrv-offer-an-investigation-2026-10-05)
+holds the remedy, a continuous cycle-stamped event stream as in F030SID, to build
+if a keyboard is the intended input.
+
 ### Not established
 
 - **No audio has been auditioned.** Pitch was measured (A4 renders at 439 Hz)
@@ -159,6 +182,6 @@ songs over about 64 s.
 ### Limits
 
 Nine voices, mono (the OPL2 has no panning). Not implemented: aftertouch, fine
-tuning, SMPTE-timed files, format 2 files, file looping, and the chip's rhythm
-mode. The modulation wheel switches vibrato on above 32. Percussion keys outside
+tuning, SMPTE-timed files, format 2 files of several tracks, file looping (an XMIDI
+song's loops are not unrolled either), and the chip's rhythm mode. The modulation wheel switches vibrato on above 32. Percussion keys outside
 GM's 35-81 are ignored.
