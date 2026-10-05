@@ -123,7 +123,7 @@ def main():
         "song_seconds": expected["song_seconds"],
         "periods_expected": expected["periods"],
         "periods_submitted": periods,
-        "periods_rendered": rendered,
+        "periods_rendered_mod_4096": rendered,
         "late_periods": late,
         "note_ons_expected": expected["note_ons"],
         "note_ons_seen": note_ons,
@@ -144,8 +144,11 @@ def main():
     problems = []
     if not tables_match:
         problems.append("the player's table image differs from the bench fixture's")
-    if periods != expected["periods"] or rendered != expected["periods"]:
-        problems.append(f"{periods} periods submitted and {rendered} rendered, expected {expected['periods']}")
+    # The DSP's status word keeps the rendered-period count in twelve bits, so a song of
+    # more than 4,095 periods (about 64 s) reads back modulo 4,096.
+    if periods != expected["periods"] or rendered != expected["periods"] % 4096:
+        problems.append(f"{periods} periods submitted and {rendered} rendered (mod 4096), "
+                        f"expected {expected['periods']}")
     if checksum != expected["period_checksum"]:
         problems.append("the DSP's output checksum differs from the host reference's")
     if events != expected["parameter_events"]:

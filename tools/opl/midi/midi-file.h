@@ -26,15 +26,26 @@ public:
 	SmfPlayer() : tracks_(0) {}
 
 	// The file must stay in memory while it plays. False for anything but a
-	// format 0 or 1 file with ticks-per-quarter-note timing.
+	// format 0 or 1 file (or a format 2 file of a single track, which is the same
+	// thing) with ticks-per-quarter-note timing. A RIFF-style "MIDI" wrapper, as
+	// LucasArts' .GMD files have, is looked through to the MThd inside it.
 	bool load(const uint8_t *data, uint32_t size) {
 		tracks_ = 0;
+		if (size >= 12 && tag(data, "MIDI")) {
+			uint32_t at = 8;
+			while (at + 4 <= size && at < 64 && !tag(data + at, "MThd"))
+				++at;
+			if (at + 4 > size || at >= 64)
+				return false;
+			data += at;
+			size -= at;
+		}
 		if (size < 14 || !tag(data, "MThd") || be32(data + 4) < 6)
 			return false;
 		const unsigned format = be16(data + 8);
 		const unsigned count = be16(data + 10);
 		division_ = be16(data + 12);
-		if (format > 1 || (division_ & 0x8000) || division_ == 0)
+		if (format > 2 || (format == 2 && count != 1) || (division_ & 0x8000) || division_ == 0)
 			return false;
 		uint32_t at = 8 + be32(data + 4);
 		while (at + 8 <= size && tracks_ < kMaxTracks && tracks_ < count) {

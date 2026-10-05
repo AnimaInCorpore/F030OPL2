@@ -95,7 +95,7 @@ reader and the player are this project's.
 
 ## Verification
 
-`make check` runs 154 engine, file and stream-parser checks (`midi-test.cpp`:
+`make check` runs 158 engine, file and stream-parser checks (`midi-test.cpp`:
 pitch, voice allocation and stealing, the pedal, volume, bend, percussion
 durations, tick-to-frame exactness, running status, damaged and unsupported
 files).
@@ -117,6 +117,34 @@ checks that the player's uploaded tables are byte for byte the bench fixture's.
 The tightest period of `song.mid` leaves 225 frames (4.6 ms) of slack with
 render-ahead (58 without). Real songs from Falcon 3 and Ultima 4 (not shipped here) play
 the same way: eight were gated, all bit-exact with no late period.
+
+### Songs to try
+
+None ship with this repository. The sibling game projects beside it hold plenty
+(F030Method indexes them): Falcon 3's `MUSIC/` has 150 SMF files in six
+arrangements per tune (`.MID .MDI .MII .ADL .ALB .ALI`), Ultima Underworld 1 and
+2 and Panzer General keep Miles XMIDI (`.XMI`, 76 and more sequences), TIE
+Fighter's four `.GMD` files are SMF in a `MIDI` wrapper, and ScummVM's source
+tree has Ultima 4's `.mid` files.
+
+- `tools/opl/midi/xmi2mid.py <xmi file or directory> <out dir>` converts XMIDI to
+  SMF (notes carry lengths there, delays are sums of bytes, tempo is constant,
+  and controllers 110-120 are the format's own and are dropped; 120 would read as
+  "all sound off"). Loops are not unrolled.
+- The reader accepts `.GMD`'s wrapper and format 2 files of a single track.
+- `tools/opl/midi-corpus.py <paths...> --output DIR [--gate N]` converts what
+  needs converting, measures every song on the host, plays the N densest (or
+  `--gate-all`) through F030MID on the emulated Falcon, and prints a table.
+
+Results of 2026-10-05, render-ahead on, every DSP checksum equal to the host's:
+244 songs (Falcon 3, Underworld 1 and 2, Panzer General, Ultima 4) measured on
+the host and the 20 densest played on the emulated Falcon, 16 minutes of music,
+31,284 notes: no late period, tightest slack 139 frames (2.8 ms). The four TIE
+Fighter songs: no late period, tightest 340 frames. Earlier runs played Falcon 3
+`A`, `B`, `C`, `D`, `E`, `F`, Underworld `AW05` and `UW05` and Ultima 4
+`Castles` and `Combat` the same way. A DSP status word holds the
+rendered-period count in twelve bits, so the gate compares it modulo 4,096 for
+songs over about 64 s.
 
 ### Not established
 

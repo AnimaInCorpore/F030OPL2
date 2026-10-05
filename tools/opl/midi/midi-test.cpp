@@ -231,8 +231,17 @@ void testSmf() {
 	CHECK(!p.load(bad.data(), (uint32_t)bad.size()));
 	std::vector<uint8_t> smpte = smf(std::vector<uint8_t>(t, t + sizeof(t)), 0xe728);
 	CHECK(!p.load(smpte.data(), (uint32_t)smpte.size()));
+	std::vector<uint8_t> format3 = smf(std::vector<uint8_t>(t, t + sizeof(t)), 480, 3);
+	CHECK(!p.load(format3.data(), (uint32_t)format3.size()));
+	// a format 2 file of one track is a format 0 file; the "MIDI" wrapper of .GMD files is looked through
 	std::vector<uint8_t> format2 = smf(std::vector<uint8_t>(t, t + sizeof(t)), 480, 2);
-	CHECK(!p.load(format2.data(), (uint32_t)format2.size()));
+	CHECK(p.load(format2.data(), (uint32_t)format2.size()));
+	std::vector<uint8_t> wrapped = { 'M', 'I', 'D', 'I', 0, 0, 0x51, 0x75, 'M', 'D', 'p', 'g', 0, 0, 0, 14, 'I', 'G', '9', '8',
+	                                 0x3c, 0x0b, 0x2e, 0x2f, 0x3f, 0x30, 0x2d, 0x00, 0x58, 0x34 };
+	wrapped.insert(wrapped.end(), format2.begin(), format2.end());
+	CHECK(p.load(wrapped.data(), (uint32_t)wrapped.size()));
+	CHECK(p.next(&m));
+	CHECK_EQ(m.status, 0x90);
 
 	// two tracks interleave by time
 	std::vector<uint8_t> two;

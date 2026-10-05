@@ -63,8 +63,9 @@ Hatari with its worst period at about 94% of the DSP budget; see
 - `tools/opl/opl-kernel.h`: exact host reference.
 - `tools/opl/midi/`: the MIDI player: engine (`midi-opl.h`), SMF and live-stream
   readers (`midi-file.h`), the period pipeline, the Falcon program
-  (`f030mid.cpp`), the host tool `opl-midi` and the GM bank (`gm-bank.h`, from
-  ScummVM, GPL-3.0-or-later).
+  (`f030mid.cpp`), the host tool `opl-midi`, the XMIDI converter `xmi2mid.py` and
+  the GM bank (`gm-bank.h`, from ScummVM, GPL-3.0-or-later). `tools/opl/midi-corpus.py`
+  plays a collection of songs through it on the emulated Falcon.
 - `src/`: SID-derived boot loader, XBIOS definitions and hardware probes.
 - `docs/import-manifest.json`: source revisions and LF-normalized import hashes.
 - `tools/opl/README.md`: historical ScummVM investigation and measurements;
