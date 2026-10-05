@@ -32,7 +32,7 @@ EXE := $(if $(filter MINGW% MSYS% CYGWIN%,$(HOST_UNAME)),.exe,)
 M68K_CXX ?= m68k-atari-mintelf-g++
 MIDI := $(OPL)/midi
 MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
-.PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav
+.PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav midi-hatari
 all: dsp ref midi-host
 
 tools: $(VASM) $(VLINK)
@@ -115,3 +115,7 @@ midi-live-gate: midi-host midi-tos build/midi-test/song.mid
 # Audition a file on the PC: make midi-wav MIDI_FILE=song.mid WAV=song.wav
 midi-wav: midi-host
 	$(OPL)/build/headless/opl-midi$(EXE) $(MIDI_FILE) --wav $(WAV)
+
+# Listen in the calibrated Hatari: make midi-hatari MIDI_FILE=song.mid
+midi-hatari: midi-tos
+	$(PYTHON) $(OPL)/midi-hatari.py $(MIDI_FILE)
