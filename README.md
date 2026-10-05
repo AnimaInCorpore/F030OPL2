@@ -6,6 +6,10 @@ and streams stereo audio through SSI to the Falcon DAC at approximately
 49.17 kHz. The initial implementation is imported from the mature local
 ScummVM Falcon OPL work, with the F030SID toolchain and two-stage boot scaffold.
 
+`release/f030mid.tos` is a real-time MIDI player: it plays Standard MIDI Files
+and acts as a synthesizer for the Falcon's MIDI IN port, through the OPL2 on the
+DSP. See [the MIDI player](docs/midi-player.md).
+
 ## Build and verify
 
 Use an MSYS2 login shell on Windows with `/ucrt64/bin` on PATH. Dependencies:
@@ -18,6 +22,7 @@ make check
 make dsp-gate
 make stream-gate
 make rhythm-gate
+make midi-tos midi-gate midi-live-gate   # the MIDI player: needs the m68k-atari-mintelf cross compiler
 ```
 
 `release/f030opl2.tos` is the inherited standalone stream harness. It reads
@@ -56,6 +61,10 @@ Hatari with its worst period at about 94% of the DSP budget; see
 - `tools/opl/m68k/oplplay.s`: standalone 68030 stream host.
 - `tools/opl/opl-practical.h`: register decoder and practical host oracle.
 - `tools/opl/opl-kernel.h`: exact host reference.
+- `tools/opl/midi/`: the MIDI player: engine (`midi-opl.h`), SMF and live-stream
+  readers (`midi-file.h`), the period pipeline, the Falcon program
+  (`f030mid.cpp`), the host tool `opl-midi` and the GM bank (`gm-bank.h`, from
+  ScummVM, GPL-3.0-or-later).
 - `src/`: SID-derived boot loader, XBIOS definitions and hardware probes.
 - `docs/import-manifest.json`: source revisions and LF-normalized import hashes.
 - `tools/opl/README.md`: historical ScummVM investigation and measurements;

@@ -25,8 +25,15 @@ HOST_CXX ?= g++
 DOSBOX ?= dosbox-staging
 OPL := tools/opl
 EXE := $(if $(filter MINGW% MSYS% CYGWIN%,$(HOST_UNAME)),.exe,)
-.PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate
-all: dsp ref
+# The 68030 MIDI player is built with the MiNT cross compiler (GCC for
+# m68k-atari-mintelf): put it on PATH or point M68K_CXX at it in local.mk. The
+# Falcon has no FPU, so the objects are soft-float 68030 code linked with the
+# 68000 (soft-float) runtime.
+M68K_CXX ?= m68k-atari-mintelf-g++
+MIDI := $(OPL)/midi
+MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
+.PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav
+all: dsp ref midi-host
 
 tools: $(VASM) $(VLINK)
 
@@ -68,6 +75,7 @@ $(OPL)/build/headless/opl-rt-fixture$(EXE): $(OPL)/rt-fixture.cpp $(OPL)/opl-pra
 
 check: all
 	$(OPL)/build/headless/opl-practical-unit-test$(EXE)
+	$(OPL)/build/headless/opl-midi-test$(EXE)
 
 # Synthetic cases need neither ScummVM nor game data.
 dsp-gate: all
@@ -76,3 +84,34 @@ stream-gate: all
 	$(PYTHON) $(OPL)/rt-stream-gate.py --scenario stress --output build/stream-gate $(GATE_ARGS)
 rhythm-gate: all
 	$(PYTHON) $(OPL)/rt-stream-gate.py --scenario rhythm --output build/rhythm-gate $(GATE_ARGS)
+
+# ---- the MIDI player
+midi-host: $(OPL)/build/headless/opl-midi$(EXE) $(OPL)/build/headless/opl-midi-test$(EXE)
+
+$(OPL)/build/headless/opl-midi$(EXE): $(MIDI)/opl-midi.cpp $(MIDI_HEADERS)
+	mkdir -p $(OPL)/build/headless
+	$(HOST_CXX) -O2 -std=c++11 -Wall -Wextra $< -o $@
+
+$(OPL)/build/headless/opl-midi-test$(EXE): $(MIDI)/midi-test.cpp $(MIDI_HEADERS)
+	mkdir -p $(OPL)/build/headless
+	$(HOST_CXX) -O2 -std=c++11 -Wall -Wextra $< -o $@
+
+# F030MID.TOS embeds the DSP image the `dsp` target generates.
+midi-tos: dsp
+	mkdir -p build/midi-tos release
+	$(M68K_CXX) -m68030 -msoft-float -O2 -std=gnu++17 -fno-exceptions -fno-rtti -Wall -Wextra 		-I $(OPL)/build -I $(MIDI) -c $(MIDI)/f030mid.cpp -o build/midi-tos/f030mid.o
+	$(M68K_CXX) -m68000 build/midi-tos/f030mid.o -o build/midi-tos/F030MID.TOS
+	cp build/midi-tos/F030MID.TOS release/f030mid.tos
+
+# The test songs the MIDI gates play, written by a deterministic script.
+build/midi-test/song.mid: $(MIDI)/make-test-midi.py
+	$(PYTHON) $< build/midi-test
+
+midi-gate: midi-host midi-tos build/midi-test/song.mid
+	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/song.mid --output build/midi-gate $(GATE_ARGS)
+midi-live-gate: midi-host midi-tos build/midi-test/song.mid
+	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/live.bin --raw --output build/midi-live-gate $(GATE_ARGS)
+
+# Audition a file on the PC: make midi-wav MIDI_FILE=song.mid WAV=song.wav
+midi-wav: midi-host
+	$(OPL)/build/headless/opl-midi$(EXE) $(MIDI_FILE) --wav $(WAV)
