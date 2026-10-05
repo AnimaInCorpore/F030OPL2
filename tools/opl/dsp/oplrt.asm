@@ -23,6 +23,7 @@
 ;   Y internal $0000-$003f  mix ring
 ;   Y internal $0040-$0063  gain pairs of feedback modulators, [history, onward]
 ;   Y internal $0080-$0091  feedback history, older product
+;   Y internal $0070-$0074  rhythm: the noise stage's operand ring (set at start)
 ;   Y internal $00a0-$00af  rhythm: this block's sixteen drum sums
 ;   Y internal $00c0-$00ff  rhythm: drum table row of each frame's noise
 ;   X external $0200-$03ff  gain table 2^(-envOut/32) / 2, 512 words
@@ -105,6 +106,7 @@ NOISE_JUMP      equ     $3900
 NOISE_POWERS    equ     $3c00
 NOISE_TAPS      equ     $400100         ; x^23 + x^14 + 1, right-shifting Galois form
 NOISE_BITS      equ     $000009         ; the two state bits a frame's drums read
+NOISE_CONSTANTS equ     $0070           ; Y internal, 8-aligned: stage_drum_noise's five operands, a modulo-5 ring
 OP_BASS_CAR     equ     13              ; record indices of the rhythm section
 OP_HIHAT        equ     14
 OP_SNARE        equ     15
@@ -420,46 +422,47 @@ ssmn_done:
 ; with the lookup and the mix.
 ;
 ; The noise generator jumps 36 slot clocks per frame; two bits select the drum
-; table's row, kept as that row's address. a = the state, x0 = the taps,
-; y0 = the two bits' mask, x1 = the drum table's address.
+; table's row, kept as that row's address. Enters with no register set up;
+; leaves the state in noise_state and every register it borrowed restored.
 stage_drum_noise:
         jsr     catch_up_noise
         move    #NOISE_RING,r4
         move    #>NOISE_JUMP,r0
         move    #>NOISE_JUMP+256,r1
         move    #>NOISE_JUMP+512,r2
+        move    #NOISE_CONSTANTS,r3
+        move    #4,m3
+        move    #>$ff,y1                ; the byte mask, restored to $3ff below
+        move    #>$020000,y0            ; >> 6: hi-hat slot in bit 3, snare in bit 0
         move    x:noise_state,a
 sdn_render:
+; y0 steps through the operand ring by parallel loads, so no constant is
+; loaded by an instruction of its own: >> 6, the two-bit mask, the drum
+; table's address, >> 8, >> 16, and back to >> 6 for the next frame. A = the
+; bit-reversed Fibonacci state; each byte contributes linearly, and the
+; 36-slot jump is three table reads folded together.
         do      x:span_frames,sdn_done
         move    a1,x1
-        move    #>$020000,y0            ; >> 6: hi-hat slot in bit 3, snare in bit 0
-        mpy     x1,y0,b
-        move    #>NOISE_BITS,x0
-        and     x0,b
-        move    #>DRUM_TABLE,x0
-        or      x0,b
-        move    b1,y:(r4)+
-; Inline the single-use 36-slot jump: avoid JSR/RTS and the DO-loop NOP.
-; A = bit-reversed Fibonacci state; each byte contributes linearly.
-        move    a1,x1
-        move    #>$ff,x0
-        and     x0,a
+        mpy     x1,y0,b   y:(r3)+,y0    ; y0 = the two-bit mask
+        and     y0,b      y:(r3)+,y0      ; y0 = the drum table's address
+        or      y0,b      y:(r3)+,y0      ; y0 = >> 8
+        and     y1,a      b1,y:(r4)+      ; the low byte; the row is stored
         move    a1,n0
-        move    #>$008000,y0
-        mpy     x1,y0,a
-        and     x0,a
+        mpy     x1,y0,a   y:(r3)+,y0      ; y0 = >> 16
+        and     y1,a
         move    a1,n1
-        move    #>$000080,y0
-        mpy     x1,y0,a
-        and     x0,a
+        mpy     x1,y0,a   y:(r3)+,y0      ; y0 = >> 6, for the next frame
+        and     y1,a
         move    a1,n2
         move    y:(r0+n0),a
         move    y:(r1+n1),x0
 ; Fold the middle byte while fetching the high byte of the noise jump.
-        eor     x0,a    y:(r2+n2),x1
+        eor     x0,a      y:(r2+n2),x1
         eor     x1,a
 sdn_done:
         move    a1,x:noise_state
+        move    #>-1,m3
+        move    #>$3ff,y1
         rts
 
 ; The hi-hat's oscillator: each frame's phase becomes the address of a
@@ -715,6 +718,17 @@ start:
         move    a1,x:(r0)+
         move    a1,y:(r4)+
 start_cleared:
+        move    #NOISE_CONSTANTS,r0
+        move    #>NOISE_BITS,a
+        move    a1,y:(r0)+
+        move    #>DRUM_TABLE,a
+        move    a1,y:(r0)+
+        move    #>$008000,a
+        move    a1,y:(r0)+
+        move    #>$000080,a
+        move    a1,y:(r0)+
+        move    #>$020000,a
+        move    a1,y:(r0)+
         move    #>4,a
         move    a1,x:tremolo_shift
         move    #>9,a
@@ -1146,10 +1160,6 @@ mode_tom_silent:
 ; Channel seven stands for the hi-hat, the snare and the cymbal together.
 mode_drums:
         jsr     advance_carrier          ; snare's own phase, for leaving rhythm mode
-        move    x:noise_state,a
-        move    #>NOISE_TAPS,x0
-        move    #>NOISE_BITS,y0
-        move    #>DRUM_TABLE,x1
         jsr     stage_drum_noise
         move    #>OP_BASE+OP_HIHAT*OP_STRIDE,r7
         move    #>ROW_TABLE,r0

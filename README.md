@@ -44,9 +44,11 @@ The practical DSP kernel uses 32-frame control blocks (about 0.65 ms), with samp
 remain block-rate, so synthesis is not chip exact. It is tested against a matching integer host
 reference. The exact reference is retained separately; the exact DSP kernel
 is a benchmark and is not the real-time playback path. Inherited results are
-not proof of this checkout. No physical Falcon validation is claimed. The one-second rhythm stress case
-still misses one period deadline despite matching its reference checksum;
-`make rhythm-gate` currently reports that timing failure.
+not proof of this checkout. No physical Falcon validation is claimed. The rhythm
+stress stream, formerly one late period, now renders on time under the calibrated
+Hatari with its worst period at about 94% of the DSP budget; see
+[speed-quality](docs/speed-quality.md). `rt-stream-gate.py --profile` and
+`tools/opl/profile-labels.py` show where a stream's cycles go.
 
 ## Source map and provenance
 
