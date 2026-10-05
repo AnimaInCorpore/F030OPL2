@@ -43,11 +43,22 @@ public:
 
 	Pipeline() : count_(0), overflowed_(false) {}
 
-	// The chip and the engine start from reset at the given frame.
-	void begin(uint64_t frame) {
+	// The chip and the engine start from reset at the given frame. A fresh
+	// machine (the default: the tables were just uploaded) already holds the
+	// reset state in every word the decoder's reset would send except the
+	// channels' output routing, which the upload leaves at zero where the reset
+	// state is "the mix" (and zero would mute): only those nine words go out,
+	// not the 397 the full reset sends, which were the tightest period of a song.
+	void begin(uint64_t frame, bool freshMachine = true) {
 		count_ = 0;
 		overflowed_ = false;
-		decoder_.reset(this, 9, (uint32_t)frame);
+		if (freshMachine) {
+			FreshMachine filter(this);
+			decoder_.reset(&filter, 9, (uint32_t)frame);
+			decoder_.sink = this;   // the reset is the only thing the filter is for
+		} else {
+			decoder_.reset(this, 9, (uint32_t)frame);
+		}
 		engine_.reset(this, frame);
 	}
 
@@ -92,12 +103,25 @@ public:
 	}
 
 private:
+	// Passes on only the words a freshly uploaded machine does not already hold.
+	struct FreshMachine : OplPractical::Sink {
+		explicit FreshMachine(Pipeline *p) : owner(p) {}
+		void write(uint32_t frame, uint16_t address, int32_t value) override {
+			namespace P = OplPractical;
+			if (address >= P::kChannelBase && address < P::kChannelBase + P::kChannels * P::kChannelStride &&
+			    (address - P::kChannelBase) % P::kChannelStride == P::CH_ROUTE)
+				owner->push(frame, address, value);
+		}
+		Pipeline *owner;
+	};
+
 	// RegisterSink: the engine's register writes
 	void write(uint64_t frame, uint16_t reg, uint8_t value) override {
 		decoder_.write((uint32_t)frame, reg, value);
 	}
 	// OplPractical::Sink: the decoder's parameter events
-	void write(uint32_t frame, uint16_t address, int32_t value) override {
+	void write(uint32_t frame, uint16_t address, int32_t value) override { push(frame, address, value); }
+	void push(uint32_t frame, uint16_t address, int32_t value) {
 		if (count_ >= kPendingCapacity) {
 			overflowed_ = true;
 			return;

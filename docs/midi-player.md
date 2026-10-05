@@ -106,17 +106,16 @@ and compare with the host tool's prediction. Results of 2026-10-05:
 
 | input | periods | notes | parameter events | DSP checksum vs host | late periods |
 | --- | ---: | ---: | ---: | --- | ---: |
-| `a440.mid`, one second | 193 | 1 | 399 | equal (16,233,456) | 0 |
-| `song.mid`, 13.5 s, five tracks, tempo change, GM reset, bend, pedal, drums | 990 | 138 | 3,229 | equal (6,797,716) | 0 |
-| `live.bin` as MIDI IN (`-i`), GM reset, running status, clock bytes, bend, drums | 247 | 7 | 550 | equal (7,781,472) | 0 |
+| `a440.mid`, one second | 193 | 1 | 54 | equal (16,233,456) | 0 |
+| `song.mid`, 13.5 s, five tracks, tempo change, GM reset, bend, pedal, drums | 990 | 138 | 2,884 | equal (6,797,716) | 0 |
+| `live.bin` as MIDI IN (`-i`), GM reset, running status, clock bytes, bend, drums | 247 | 7 | 205 | equal (7,781,472) | 0 |
 
 The checksum is the sum of every limited output word over the whole run, so a
 match means the 68030's register writes, the decoder events, the stream
 protocol and the DSP render all agree with the host reference. The gate also
 checks that the player's uploaded tables are byte for byte the bench fixture's.
-The tightest period of `song.mid` leaves 191 frames (3.9 ms) of slack with
-render-ahead (58, at the start where the reset's 397 events arrive in one
-period, without). Real songs from Falcon 3 and Ultima 4 (not shipped here) play
+The tightest period of `song.mid` leaves 225 frames (4.6 ms) of slack with
+render-ahead (58 without). Real songs from Falcon 3 and Ultima 4 (not shipped here) play
 the same way: eight were gated, all bit-exact with no late period.
 
 ### Not established

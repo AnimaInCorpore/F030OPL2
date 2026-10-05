@@ -94,8 +94,8 @@ operators in music without tremolo or vibrato.
 
 ## What else F030SID and F030MXDRV offer: an investigation (2026-10-05)
 
-(Item 1 of the ranking below has since been implemented; its section follows
-the list.)
+(Items 1 and 3 of the ranking below have since been implemented; their
+sections follow the list.)
 
 Real music exposed a limit the synthetic gates did not: Falcon 3's `C.MID`
 played with one late period and `F.MID` with four, though every output word
@@ -132,9 +132,7 @@ and without it, so that check's tolerance, not the change, is the issue.
    `STREAM_PUSH`). Removes the per-period READY handshake and cuts live-MIDI
    latency from about two periods (31 ms) to a few blocks, since an event no
    longer waits for its period to be assembled.
-3. *No reset burst at start.* The uploaded tables already hold the reset
-   state, yet the decoder sends 397 events in the first period (the tightest
-   one in `song.mid`, 58 frames). They can be skipped for a fresh DSP.
+3. *No reset burst at start*: **done, see the end of this file.**
 4. *Steady-state envelope handlers* (SID's frozen/resting-at-sustain voices).
    An operator in sustain without tremolo or vibrato need not rerun the
    boundary pass: it would cut the pass's 42 cycles per frame in music, not in
@@ -184,3 +182,18 @@ and does not show the benefit). The stall check, whose expectation drops by one
 period in this mode (the transmitter plays the extra banked period before any
 replay), counts 59 of 60.7 against 61 of 62.7 without it: the same 1.7-period
 shortfall as before this change, which remains unexplained.
+
+## No reset burst at start
+
+The uploaded tables already hold the chip's reset state, yet the decoder's
+reset sent 397 events in a song's first period, which was its tightest. For a
+freshly loaded DSP (`Pipeline::begin`'s default) only the nine channel output
+routing words are sent: the upload leaves them at zero, where the reset state
+is "the mix", and zero would mute the channel. Everything else the reset sends
+equals what the upload holds. A440's first period now carries 52 events, not
+397, `song.mid`'s busiest period 177, not 497, and the host reference's
+checksums are unchanged (16,233,456 and 6,797,716). On the DSP every checksum
+still equals the host's (`a440`, `song`, Falcon 3 `C`, `F`, Ultima 4
+`Combat`, live input), and with render-ahead the tightest slack rose by about
+35 frames on each song: `C.MID` 428 to 463, `F.MID` 261 to 296, `song.mid`
+191 to 225, `Combat` 538 to 573.
