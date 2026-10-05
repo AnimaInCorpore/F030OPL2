@@ -1,0 +1,99 @@
+{
+  "scummvm_commit": "53ba4e68ed4801844023de4bff54ac93529a4565",
+  "sid_commit": "ab1fa5b740022f4c853b41b6cd48fa9b9f3ca992",
+  "files": [
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\README.md",
+      "sha256_lf": "101c5476f8c35b066c299f0a176c6641db0fd6652862bc2381ccabbdde5826f2"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\generate-tables.py",
+      "sha256_lf": "5fbf0bf2bff03b3d0cb72b9932a7de5cda3a6c0dde1f971da2778f5f082a1371"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\opl-tables.h",
+      "sha256_lf": "7c82713d6b372ab3f719caa69f03eb19781a3c4191d65d4e073716484f2671eb"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\opl-practical-tables.h",
+      "sha256_lf": "b207be6356aeb56db3b27324c30e3f09ff73874b33258e6648877412de598135"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\opl-kernel.h",
+      "sha256_lf": "ed357038f58b51451715d558867bf8bf756d11139a596a5a7042aaf63d71fe08"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\opl-practical.h",
+      "sha256_lf": "f83da60ff2daaaaed90213bd6d48a935a1acd9d57fc0119b70a38d472904327e"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\practical-unit-test.cpp",
+      "sha256_lf": "54efc93850a4bc3ca2f00198607bd9db6d3a8fd0798d8c8631102812d5917ab1"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\rt-fixture.cpp",
+      "sha256_lf": "9691b80c8d4fe7dd4a5ef0f23569cd3958f001e6b753b8791c84927c505d21e7"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\rt-bench-gate.py",
+      "sha256_lf": "aa224c1f473440644ef48403c5331b067f3aeff68d3b15e155a5942417bb9c21"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\rt-stream-gate.py",
+      "sha256_lf": "0fa553930f16c4ba357f58af2084ebbcb674e4f711b3c457a1659b9b98ae8f17"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\gate_env.py",
+      "sha256_lf": "60bed43196bcf4bf235d7eb3bb0f867d76aa05f3be9ea6469cdd80c6547a6527"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\generate-image-header.py",
+      "sha256_lf": "0f3edd046a2c6c9b00502269805683ce2edbd137d629bfd6546bb9535e63e89f"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\build-dsp.sh",
+      "sha256_lf": "4ba510796f543224c4452a27229bc4d5a67bfd70d92ebbe17af2414a3552243c"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\dsp\\ioequ.inc",
+      "sha256_lf": "a2c1b13fd453410964b9838e69d1ac80eee993773a64652399ec580e6118e2a7"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\dsp\\opl.asm",
+      "sha256_lf": "a18d04b4306cd3dbc3ba02fbc50168234c24fec332c69b1c5c1898aac17e2227"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\dsp\\oplrt.asm",
+      "sha256_lf": "794bbcbb1aa248b86c18599ad2baf2fffc93208607e26c2f3e1c391668e08c0d"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\dsp\\oplrttab.inc",
+      "sha256_lf": "71571a09e9152a11c02a53ea2682acf77a267c996fb357e6f8e7e2c3a193652c"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\m68k\\oplbench.s",
+      "sha256_lf": "52d09371c48c11e0d549bc315894ab871a9ad621855098cf16878f83adaa60d3"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\m68k\\oplplay.s",
+      "sha256_lf": "cc70bb0cc91a13cacf9ec7c9ddc41863ce8dfcac5931f083d78926fed2517d22"
+    },
+    {
+      "source": "scummvm\\devtools\\atari-falcon030\\tools\\foa-opl3\\m68k\\oplrt.s",
+      "sha256_lf": "9905ca7b528c622a8ad90d46cf805171c0ec3dab823548c81700951cf8678f20"
+    }
+  ],
+  "adaptations": [
+    "Standalone fixed-width fixture types",
+    "Local toolchain and gate paths",
+    "Synthetic DSP benchmark without game assets",
+    "Git metadata optional in an uncommitted project",
+    "Parallel stereo ring writes/checksum accumulation",
+    "Parallel noise table read/XOR",
+    "Inline single-use noise jump in hardware loop"
+  ],
+  "toolchain_submodule": {
+    "url": "https://github.com/AnimaInCorpore/f030dsp3d.git",
+    "commit": "9a87bd904e515224b02272ecfa42bf143215db5e"
+  }
+}

@@ -1,0 +1,15 @@
+build/
+release/
+local.mk
+__pycache__/
+tools/opl/build/
+tools/opl/dsp/*.EXE
+tools/opl/dsp/*.exe
+tools/opl/dsp/*.CLD
+tools/opl/dsp/*.LOD
+tools/opl/dsp/*.LST
+tools/opl/dsp/*.BAT
+tools/opl/dsp/ioequ.inc
+tools/opl/dsp/OPLBOOT.ASM
+tools/opl/dsp/*_boot.i
+tools/opl/dsp/*_image.i
