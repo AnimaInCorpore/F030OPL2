@@ -19,7 +19,9 @@ Use an MSYS2 login shell on Windows with `/ucrt64/bin` on PATH. Dependencies:
 make, C/C++ compiler, Python 3, DOSBox Staging; calibrated Hatari for DSP gates.
 Set `DOSBOX` and `PYTHON` in ignored `local.mk` if needed. The MIDI player's
 68030 program also needs the MiNT cross compiler (`m68k-atari-mintelf-g++`, in
-MSYS2's `mingw64`); put it on PATH or set `M68K_CXX` in `local.mk`. Gates that
+MSYS2's `mingw64`; on macOS the `cross-mint` build beside the other Falcon projects,
+`~/Work/cross-mint/bin`, not the older `m68k-atari-mint` one, whose library has no
+`mint/falcon.h`); put it on PATH or set `M68K_CXX` in `local.mk`. Gates that
 drive the emulator need the shell to find the `/ucrt64/bin` DLLs and a `HOME`.
 
 ```sh

@@ -49,6 +49,27 @@ writes the DSP's output (16-bit stereo, 49,170 Hz) as a WAV through
 `PLAYDATA.BIN`/`OPLDATA.BIN` so that the older `f030opl2.tos` stream harness can
 play the same file too.
 
+### On a Falcon
+
+`release/f030mid.tos` is an ordinary program that reads its parameters from the
+command line, so on a Falcon it is installed as `F030MID.TTP` (TOS Takes
+Parameters): the desktop then asks for the file name on each start, for example
+`FANFARE.MID`, or `-l` for the MIDI IN synthesizer. The file is the same; only
+the extension differs.
+
+On the BlueSCSI card the program and its songs sit together in `\MIDPLAY\` of
+the data image `HD10_512.hda` (the layout of `\SIDPLAY\` beside it). That image
+uses 4,096-byte logical sectors behind an AHDI root sector, so write to it with
+mtools at the partition offset, 8.3 upper-case names only:
+
+```sh
+mmd   -i /Volumes/BlueSCSI/HD10_512.hda@@32768 ::MIDPLAY
+mcopy -i /Volumes/BlueSCSI/HD10_512.hda@@32768 -m -n F030MID.TTP *.MID ::MIDPLAY/
+```
+
+Keep a copy of the image first, and eject the card before putting it in the
+BlueSCSI. The details of the image format are in the card's `FALCON_HDD_TIPS.TXT`.
+
 ## How it works
 
 ```
