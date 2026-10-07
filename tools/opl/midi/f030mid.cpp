@@ -1,6 +1,6 @@
 // F030MID: a real-time MIDI player for the Falcon's emulated AdLib.
 //
-//   F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n]
+//   F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
 //
 // With a file it plays it; with -l, or with no file and no SONG.MID beside the
 // program, it is a synthesizer for the Falcon's MIDI IN port: whatever arrives
@@ -24,10 +24,15 @@
 // NOAHEAD.FLG beside the program stands in for -a and -n (Hatari passes no
 // arguments).
 //
+// -d (or a DIAG.FLG beside the program) is for a machine that bombs: it prints
+// what the machine looks like (TOS, cookies, TPA, memory) and waits for a key at
+// each stage, so the screen shows how far the program got.
+//
 // RESULT.BIN, written when a file ends, carries the DSP's counters for
 // midi-gate.py: status (late periods << 12 | periods rendered), the output
 // checksum, the least slack in ring words, periods, parameter events,
 // note-ons and an overflow flag, as big-endian 32-bit words.
+#include <mint/basepage.h>
 #include <mint/falcon.h>
 #include <mint/osbind.h>
 #include <stdio.h>
@@ -90,6 +95,65 @@ inline uint32_t portReceive() {
 inline uint32_t portExchange(uint32_t word) {
 	portSend(word);
 	return portReceive();
+}
+
+// ---- -d: say what the machine looks like and stop at each stage
+
+// For a machine that bombs: the screen then shows how far the program got, and
+// the state that differs between a bare boot and a desktop with accessories.
+bool g_diag = false;
+
+void stage(const char *what) {
+	if (!g_diag)
+		return;
+	printf("[%s]  any key\n", what);
+	fflush(stdout);
+#ifndef DIAG_NOWAIT
+	Cconin();
+#endif
+}
+
+struct Cookie {
+	uint32_t tag, value;
+};
+Cookie g_cookies[32];
+unsigned g_cookie_count;
+uint16_t g_tos_version;
+uint32_t g_tos_date;
+
+long readSystemSuper() {
+	const uint8_t *os = (const uint8_t *)*(volatile uint32_t *)0x4f2;   // _sysbase
+	g_tos_version = (uint16_t)((os[2] << 8) | os[3]);
+	g_tos_date = ((uint32_t)os[0x18] << 24) | ((uint32_t)os[0x19] << 16) | ((uint32_t)os[0x1a] << 8) | os[0x1b];
+	g_cookie_count = 0;
+	const uint32_t *jar = (const uint32_t *)*(volatile uint32_t *)0x5a0;   // _p_cookies
+	while (jar && jar[0] && g_cookie_count < 32) {
+		g_cookies[g_cookie_count].tag = jar[0];
+		g_cookies[g_cookie_count].value = jar[1];
+		++g_cookie_count;
+		jar += 2;
+	}
+	return 0;
+}
+
+void describeMachine() {
+	Supexec(readSystemSuper);
+	printf("TOS %x.%02x, %08lx\n", g_tos_version >> 8, g_tos_version & 0xff, (unsigned long)g_tos_date);
+	printf("cookies:");
+	for (unsigned i = 0; i < g_cookie_count; ++i) {
+		const uint32_t t = g_cookies[i].tag;
+		printf(" %c%c%c%c=%lx", (int)(t >> 24) & 0x7f, (int)(t >> 16) & 0x7f, (int)(t >> 8) & 0x7f, (int)t & 0x7f,
+		       (unsigned long)g_cookies[i].value);
+	}
+	printf("\n");
+	unsigned long sp;
+	asm volatile("move.l %%sp,%0" : "=r"(sp));
+	printf("basepage %08lx, TPA %08lx..%08lx (%lu KB), text %lu data %lu bss %lu, sp %08lx\n", (unsigned long)_base,
+	       (unsigned long)_base->p_lowtpa, (unsigned long)_base->p_hitpa,
+	       (unsigned long)((_base->p_hitpa - _base->p_lowtpa) >> 10), (unsigned long)_base->p_tlen,
+	       (unsigned long)_base->p_dlen, (unsigned long)_base->p_blen, sp);
+	printf("free ST-RAM %ld KB, free TT-RAM %ld KB\n", (long)Mxalloc(-1L, 0) >> 10, (long)Mxalloc(-1L, 1) >> 10);
+	printf("command line: %ld bytes\n", (long)(unsigned char)_base->p_cmdlin[0]);
 }
 
 // ---- table upload
@@ -277,6 +341,8 @@ int main(int argc, char **argv) {
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "-l"))
 			live = true;
+		else if (!strcmp(argv[i], "-d"))
+			g_diag = true;
 		else if (!strcmp(argv[i], "-a"))
 			ahead = 1;
 		else if (!strcmp(argv[i], "-n"))
@@ -289,6 +355,17 @@ int main(int argc, char **argv) {
 			seconds = atol(argv[++i]);
 		else if (argv[i][0] != '-')
 			file = argv[i];
+	}
+	if (!g_diag) {
+		FILE *flag = fopen("DIAG.FLG", "rb");
+		if (flag) {
+			fclose(flag);
+			g_diag = true;
+		}
+	}
+	if (g_diag) {
+		describeMachine();
+		stage("start");
 	}
 	uint8_t *data = 0;
 	uint32_t size = 0;
@@ -332,12 +409,15 @@ int main(int argc, char **argv) {
 	printf("F030MID: %s%s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file",
 	       g_render_ahead ? ", rendering ahead" : "");
 
+	stage("file loaded, before the DSP");
 	g_dsp_held = true;
 	if (!bootDsp()) {
 		releaseDsp();
 		return 1;
 	}
+	stage("DSP booted, before the table upload");
 	uploadAll();
+	stage("tables uploaded");
 	if (g_port_failed) {
 		printf("the DSP stopped answering during the table upload\n");
 		releaseDsp();
@@ -347,6 +427,7 @@ int main(int argc, char **argv) {
 		releaseDsp();
 		return 1;
 	}
+	stage("audio running, playing");
 
 	Totals totals;
 	memset(&totals, 0, sizeof(totals));

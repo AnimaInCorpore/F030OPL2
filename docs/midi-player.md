@@ -67,6 +67,13 @@ mmd   -i /Volumes/BlueSCSI/HD10_512.hda@@32768 ::MIDPLAY
 mcopy -i /Volumes/BlueSCSI/HD10_512.hda@@32768 -m -n F030MID.TTP *.MID ::MIDPLAY/
 ```
 
+If it bombs, run it with `-d` (for example `-d TOWNS.MID` in the TTP parameter
+box), or put an empty `DIAG.FLG` beside it: it then prints the TOS version, the
+cookie jar, the basepage and TPA, the sp and the free ST-RAM and TT-RAM, and waits
+for a key at each stage (file loaded, DSP booted, tables uploaded, audio running),
+so the screen shows how far it got. Nothing printed at all means it died before
+`main`.
+
 Keep a copy of the image first, and eject the card before putting it in the
 BlueSCSI. The details of the image format are in the card's `FALCON_HDD_TIPS.TXT`.
 
