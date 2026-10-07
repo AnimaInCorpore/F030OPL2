@@ -134,11 +134,26 @@ Cookie g_cookies[32];
 unsigned g_cookie_count;
 uint16_t g_tos_version;
 uint32_t g_tos_date;
+// vectors a resident program may have taken over: a * marks one outside the TOS 4.02 ROM ($e00000..$efffff)
+uint32_t g_vec[11];
+uint32_t g_vbl[8];
+uint32_t g_nvbls;
+uint32_t g_mem[3];
 
 long readSystemSuper() {
 	const uint8_t *os = (const uint8_t *)*(volatile uint32_t *)0x4f2;   // _sysbase
 	g_tos_version = (uint16_t)((os[2] << 8) | os[3]);
 	g_tos_date = ((uint32_t)os[0x18] << 24) | ((uint32_t)os[0x19] << 16) | ((uint32_t)os[0x1a] << 8) | os[0x1b];
+	static const uint32_t kVectors[11] = {0x08, 0x84, 0x88, 0xb4, 0xb8, 0x70, 0x400, 0x404, 0x408, 0x472, 0x476};
+	for (unsigned i = 0; i < 11; ++i)
+		g_vec[i] = *(volatile uint32_t *)kVectors[i];
+	g_nvbls = *(volatile uint16_t *)0x454;
+	const uint32_t *queue = (const uint32_t *)*(volatile uint32_t *)0x456;
+	for (unsigned i = 0; i < 8; ++i)
+		g_vbl[i] = queue && i < g_nvbls ? queue[i] : 0;
+	g_mem[0] = *(volatile uint32_t *)0x432;   // _membot
+	g_mem[1] = *(volatile uint32_t *)0x436;   // _memtop
+	g_mem[2] = *(volatile uint32_t *)0x42e;   // phystop
 	g_cookie_count = 0;
 	const uint32_t *jar = (const uint32_t *)*(volatile uint32_t *)0x5a0;   // _p_cookies
 	while (jar && jar[0] && g_cookie_count < 32) {
@@ -159,6 +174,17 @@ void describeMachine() {
 		printf(" %c%c%c%c=%lx%s", (int)(t >> 24) & 0x7f, (int)(t >> 16) & 0x7f, (int)(t >> 8) & 0x7f, (int)t & 0x7f,
 		       (unsigned long)g_cookies[i].value, i % 4 == 3 || i + 1 == g_cookie_count ? "\n" : "");
 	}
+	static const char *const kNames[11] = {"bus", "trap1", "trap2", "trap13", "trap14", "vbl", "etv_timer", "etv_critic",
+	                                       "etv_term", "hdv_bpb", "hdv_rw"};
+	for (unsigned i = 0; i < 11; ++i)
+		printf("%s %08lx%s%s", kNames[i], (unsigned long)g_vec[i], g_vec[i] >= 0xe00000 && g_vec[i] < 0xf00000 ? "" : " *",
+		       i % 2 ? "\n" : "  ");
+	printf("\nVBL queue (%lu):", (unsigned long)g_nvbls);
+	for (unsigned i = 0; i < 8 && i < g_nvbls; ++i)
+		if (g_vbl[i])
+			printf(" %08lx", (unsigned long)g_vbl[i]);
+	printf("\nmembot %08lx memtop %08lx phystop %08lx\n", (unsigned long)g_mem[0], (unsigned long)g_mem[1],
+	       (unsigned long)g_mem[2]);
 	printf("basepage %08lx\nTPA %08lx..%08lx (%lu KB)\n", (unsigned long)_base, (unsigned long)_base->p_lowtpa,
 	       (unsigned long)_base->p_hitpa, (unsigned long)((_base->p_hitpa - _base->p_lowtpa) >> 10));
 	printf("text %lu data %lu bss %lu\n", (unsigned long)_base->p_tlen, (unsigned long)_base->p_dlen,
