@@ -103,10 +103,24 @@ inline uint32_t portExchange(uint32_t word) {
 // the state that differs between a bare boot and a desktop with accessories.
 bool g_diag = false;
 
+unsigned long stackPointer() {
+	unsigned long sp;
+	asm volatile("move.l %%sp,%0" : "=r"(sp));
+	return sp;
+}
+
+// A stage waits for a key; a note does not (the DSP is streaming by then).
+void note(const char *what) {
+	if (!g_diag)
+		return;
+	printf("[%s] sp %08lx\n", what, stackPointer());
+	fflush(stdout);
+}
+
 void stage(const char *what) {
 	if (!g_diag)
 		return;
-	printf("[%s]  any key\n", what);
+	printf("[%s] sp %08lx  key\n", what, stackPointer());
 	fflush(stdout);
 #ifndef DIAG_NOWAIT
 	Cconin();
@@ -139,20 +153,17 @@ long readSystemSuper() {
 void describeMachine() {
 	Supexec(readSystemSuper);
 	printf("TOS %x.%02x, %08lx\n", g_tos_version >> 8, g_tos_version & 0xff, (unsigned long)g_tos_date);
-	printf("cookies:");
+	printf("cookies:\n");
 	for (unsigned i = 0; i < g_cookie_count; ++i) {
 		const uint32_t t = g_cookies[i].tag;
-		printf(" %c%c%c%c=%lx", (int)(t >> 24) & 0x7f, (int)(t >> 16) & 0x7f, (int)(t >> 8) & 0x7f, (int)t & 0x7f,
-		       (unsigned long)g_cookies[i].value);
+		printf(" %c%c%c%c=%lx%s", (int)(t >> 24) & 0x7f, (int)(t >> 16) & 0x7f, (int)(t >> 8) & 0x7f, (int)t & 0x7f,
+		       (unsigned long)g_cookies[i].value, i % 4 == 3 || i + 1 == g_cookie_count ? "\n" : "");
 	}
-	printf("\n");
-	unsigned long sp;
-	asm volatile("move.l %%sp,%0" : "=r"(sp));
-	printf("basepage %08lx, TPA %08lx..%08lx (%lu KB), text %lu data %lu bss %lu, sp %08lx\n", (unsigned long)_base,
-	       (unsigned long)_base->p_lowtpa, (unsigned long)_base->p_hitpa,
-	       (unsigned long)((_base->p_hitpa - _base->p_lowtpa) >> 10), (unsigned long)_base->p_tlen,
-	       (unsigned long)_base->p_dlen, (unsigned long)_base->p_blen, sp);
-	printf("free ST-RAM %ld KB, free TT-RAM %ld KB\n", (long)Mxalloc(-1L, 0) >> 10, (long)Mxalloc(-1L, 1) >> 10);
+	printf("basepage %08lx\nTPA %08lx..%08lx (%lu KB)\n", (unsigned long)_base, (unsigned long)_base->p_lowtpa,
+	       (unsigned long)_base->p_hitpa, (unsigned long)((_base->p_hitpa - _base->p_lowtpa) >> 10));
+	printf("text %lu data %lu bss %lu\n", (unsigned long)_base->p_tlen, (unsigned long)_base->p_dlen,
+	       (unsigned long)_base->p_blen);
+	printf("free ST-RAM %ld KB, TT-RAM %ld KB\n", (long)Mxalloc(-1L, 0) >> 10, (long)Mxalloc(-1L, 1) >> 10);
 	printf("command line: %ld bytes\n", (long)(unsigned char)_base->p_cmdlin[0]);
 }
 
@@ -271,20 +282,25 @@ void releaseDsp() {
 }
 
 bool startAudio() {
+	stage("before Locksnd");
 	if (Locksnd() != 1) {
 		printf("the sound system is locked\n");
 		return false;
 	}
+	stage("locked, before Buffoper..Setmontracks");
 	Buffoper(0);
 	Sndstatus(1);
 	Soundcmd(4, 2);          // ADDERIN, matrix input
 	Setmode(1);              // 16-bit stereo
 	Settracks(0, 0);
 	Setmontracks(0);
+	stage("mode set, before Dsptristate/Devconnect");
 	Dsptristate(1, 0);
 	// DSP transmit to the DAC, 25 MHz clock at 49.17 kHz, no handshake
 	Devconnect(1, 8, 0, 1, 1);
+	stage("connected, before the stream starts");
 	command(CMD_STREAM_START);
+	note("stream started");
 	return true;
 }
 
@@ -427,7 +443,7 @@ int main(int argc, char **argv) {
 		releaseDsp();
 		return 1;
 	}
-	stage("audio running, playing");
+	note("audio running, playing");
 
 	Totals totals;
 	memset(&totals, 0, sizeof(totals));
@@ -449,6 +465,10 @@ int main(int argc, char **argv) {
 			const unsigned n = g_pipeline.takePeriod(start, g_wire);
 			if (!submit(n, totals))
 				break;
+			if (g_diag && (p < 3 || (p & 1023) == 0)) {
+				printf("period %lu\n", (unsigned long)p);
+				fflush(stdout);
+			}
 			if ((p & 63) == 0 && Cconis()) {
 				Cnecin();
 				break;
