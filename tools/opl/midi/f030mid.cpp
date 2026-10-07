@@ -94,27 +94,44 @@ inline uint32_t portExchange(uint32_t word) {
 
 // ---- table upload
 
+// Only the port transfer runs in supervisor mode, one block at a time. The table
+// generator (uploadTables) builds the chip image and needs several KB of stack;
+// under Supexec that is TOS's small supervisor stack, which a desktop with
+// accessories and resident programs may not leave room for.
+int g_block_space;
+uint16_t g_block_address;
+const uint32_t *g_block_words;
+unsigned g_block_count;
+
+long blockSuper() {
+	portExchange(g_block_space ? CMD_WRITE_Y : CMD_WRITE_X);
+	portExchange(g_block_address);
+	portExchange(g_block_count);
+	for (unsigned i = 0; i < g_block_count && !g_port_failed; ++i)
+		portExchange(g_block_words[i] & 0xffffff);
+	return 0;
+}
+
 struct Uploader {
 	void block(int space, uint16_t address, const uint32_t *words, unsigned count) {
-		portExchange(space ? CMD_WRITE_Y : CMD_WRITE_X);
-		portExchange(address);
-		portExchange(count);
-		for (unsigned i = 0; i < count && !g_port_failed; ++i)
-			portExchange(words[i] & 0xffffff);
+		g_block_space = space;
+		g_block_address = address;
+		g_block_words = words;
+		g_block_count = count;
+		Supexec(blockSuper);
 	}
 };
 
 bool g_render_ahead = false;
 
-long uploadSuper() {
+void uploadAll() {
 	Uploader u;
 	// An OPL2 never selects the OPL3 waveforms: leave them out.
 	uploadTables(u, 9, false);
 	if (g_render_ahead) {
-		const uint32_t on = 1;
+		static const uint32_t on = 1;
 		u.block(0, OplPractical::SC_RENDER_AHEAD, &on, 1);
 	}
-	return 0;
 }
 
 // ---- one period
@@ -162,7 +179,10 @@ void putWord(FILE *f, uint32_t v) {
 }
 
 bool bootDsp() {
-	Dsp_Reserve(16, 16);
+	if (Dsp_Reserve(16, 16) < 0) {
+		printf("the DSP is in use by another program\n");
+		return false;
+	}
 	Dsp_ExecBoot(kAtariDspOplBoot, ATARI_DSP_OPL_BOOT_WORDS, 3);
 	static unsigned long reply;
 	reply = 0;
@@ -176,6 +196,14 @@ bool bootDsp() {
 		return false;
 	}
 	return true;
+}
+
+// The DSP and the sound system go back to the next program however we leave.
+bool g_dsp_held = false;
+void releaseDsp() {
+	if (g_dsp_held)
+		Dsp_Unlock();
+	g_dsp_held = false;
 }
 
 bool startAudio() {
@@ -199,6 +227,7 @@ bool startAudio() {
 void stopAudio() {
 	command(CMD_STREAM_STOP);
 	Unlocksnd();
+	releaseDsp();
 }
 
 uint8_t *loadFile(const char *path, uint32_t *size) {
@@ -303,15 +332,21 @@ int main(int argc, char **argv) {
 	printf("F030MID: %s%s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file",
 	       g_render_ahead ? ", rendering ahead" : "");
 
-	if (!bootDsp())
-		return 1;
-	Supexec(uploadSuper);
-	if (g_port_failed) {
-		printf("the DSP stopped answering during the table upload\n");
+	g_dsp_held = true;
+	if (!bootDsp()) {
+		releaseDsp();
 		return 1;
 	}
-	if (!startAudio())
+	uploadAll();
+	if (g_port_failed) {
+		printf("the DSP stopped answering during the table upload\n");
+		releaseDsp();
 		return 1;
+	}
+	if (!startAudio()) {
+		releaseDsp();
+		return 1;
+	}
 
 	Totals totals;
 	memset(&totals, 0, sizeof(totals));
