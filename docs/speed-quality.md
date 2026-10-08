@@ -83,7 +83,8 @@ second windows; the stream results are `make rhythm-gate` and `stream-gate`):
 | stress stream, late periods / min slack | 0 / 0.214 ms | 0 / 0.214 ms |
 
 Every bench case stays word exact against the practical host reference, and the
-stream checksums are unchanged (stress 10,510,080). The layered 18-channel
+stream checksums were unchanged (historical stress window: 10,510,080).
+Checksums from different fixtures or stream durations are not comparable. The layered 18-channel
 bench is exact and its stream still counts 93 late periods; that
 configuration remains experimental. The rhythm worst case is still at 94% of
 the 326-cycle budget, so its margin is thin, and nothing has run on hardware.
@@ -214,8 +215,6 @@ still equals the host's (`a440`, `song`, Falcon 3 `C`, `F`, Ultima 4
 35 frames on each song: `C.MID` 428 to 463, `F.MID` 261 to 296, `song.mid`
 191 to 225, `Combat` 538 to 573.
 
-Fresh verification of source commit `8961ed6` on 2026-10-08 is recorded in
-[the current validation snapshot](current-validation.json). Host checks, five DSP bench
-cases, one-second stress/rhythm streams in both render-ahead modes, and MIDI
-file/live gates passed. The external corpus, starvation and layered gates,
-audio audition and hardware playback were not rerun.
+The published-player and earlier development records are indexed in
+[releases and validation](releases.md#validation-records). They remain separate
+from the historical optimization measurements above.

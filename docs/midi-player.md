@@ -6,30 +6,33 @@ MIDI through its MIDI IN port. Both use the DSP OPL2 engine, the included
 General MIDI bank and nine simultaneous voices, with audio sent to the Falcon
 DAC at approximately 49.17 kHz.
 
-Download the ready-to-transfer player in `OPL2.ZIP` from
-[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases), or
-build with `make midi-tos`. For desktop use, rename a copy of
-`release/f030mid.tos` to `F030MID.TTP`; the TTP extension lets the desktop ask
+Download `OPL2.ZIP` from
+[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases) and use
+the included `F030MID.TTP`. For a source build, run `make midi-tos` and rename
+a copy of `release/f030mid.tos` to `F030MID.TTP`; the TTP extension lets the desktop ask
 for parameters. Enter `SONG.MID` to play a file or `-l` for live input. The same
 binary provides both modes. Successful physical-Falcon playback and actual
 MIDI-port input remain unverified; see [verification](#verification).
 
 ```
-F030MID.TOS [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
+F030MID.TTP [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
 ```
 
-- With a file it plays the file and returns to the desktop at the end (or on a
-  key press). With no argument it plays `SONG.MID` if one is beside the program.
-- With `-l`, or with no argument and no `SONG.MID`, it is a **live synthesizer**:
-  bytes arriving on MIDI IN sound until a key is pressed (`-t` limits it).
-  An ST, a PC interface or any keyboard on the Falcon's MIDI IN port will do;
-  the Falcon itself is the synthesizer. A plain ST cannot be the synthesizer,
-  because the OPL2 runs on the Falcon's DSP.
+- With a file it plays the file plus about two seconds of release tail, then
+  returns to the desktop. A key requests an early stop; the file path checks
+  the keyboard every 64 periods (about one second).
+- With no filename or live-mode argument, startup checks `MIDIIN.RAW` first,
+  then `SONG.MID`, then falls back to physical MIDI IN if neither is available.
+  `DEMO.MID` is not selected automatically; enter its name in the parameter box.
+- `-l` selects the **live synthesizer**: MIDI IN sounds until a key is pressed.
+  `-t seconds` approximately limits physical live input only; it does not limit
+  file playback or raw-file input. Connect a keyboard/controller or another
+  MIDI source to the Falcon's MIDI IN port. The Falcon's DSP produces the sound.
 - The DSP renders ahead of the codec by default when playing a file, which gave
   the real songs 4-11 ms of slack instead of about half a millisecond; `-n`
   turns that off, `-a` turns it on for live input. It costs latency (a file does
   not mind), so live input defaults to off. An `AHEAD.FLG` or `NOAHEAD.FLG`
-  beside the program selects the mode when the launcher passes no arguments.
+  in the working directory selects the mode when `-a`/`-n` is omitted.
   Explicit `-a`/`-n` overrides the flags; `NOAHEAD.FLG` wins if both exist. See
   [the render-ahead ring](speed-quality.md#render-ahead-ring).
 - `-i` feeds a raw MIDI byte file through the live path at the port's rate
@@ -58,7 +61,7 @@ emulator, the same engine, decoder and reference chip are built for the host:
 make midi-wav MIDI_FILE=song.mid WAV=song.wav
 ```
 
-writes the DSP's output (16-bit stereo, 49,170 Hz) as a WAV through
+renders the practical host reference (16-bit stereo, 49,170 Hz) to a WAV through
 `tools/opl/build/headless/opl-midi`, whose `--play`/`--data` options write
 `PLAYDATA.BIN`/`OPLDATA.BIN` so that the older `f030opl2.tos` stream harness can
 play the same file too.
@@ -123,12 +126,12 @@ MIDI IN / .MID --> engine (midi-opl.h) --OPL register writes--> decoder
 
 The 68030 build and the host build compile the same headers; the Falcon program
 is C++ built with the MiNT cross compiler (`M68K_CXX` in `local.mk`). The
-Falcon has no FPU, so the code is soft-float 68030 linked against the 68000
-(soft-float) runtime.
+binary requires no FPU: it uses soft-float 68030 code linked against the
+68000 soft-float runtime.
 
 ### Decisions worth knowing
 
-- **Pitch is one octave below the note.** The included AdLib bank
+- **Pitch mapping uses a one-octave f-number offset.** The included AdLib bank
   uses an f-number convention one octave low: 74 of its 128
   melodic patches use frequency multiplier 2 on the carrier. Applying the chip's
   own formula to the note an octave down, with the patch's multiplier, gives true
@@ -155,12 +158,11 @@ allocator, pitch calculation, reader and player are included here.
 
 ## Verification
 
-Current-build verification (2026-10-08, source commit `8961ed6`) is recorded in
-[current-validation.json](current-validation.json). All 158 MIDI host checks
-passed. `song.mid` passed in render-ahead on and off modes, and `live.bin` passed
-through the raw-input live path: matching DSP/host checksums, matching uploaded
-tables, no event overflow and no late period. The external song corpus and
-physical MIDI port were not rerun; no audio was auditioned or hardware tested.
+The published `v0.1.0` player passed host checks and packaged-player gates on
+2026-10-08: the demo in both render-ahead modes and raw live input with it off.
+Uploaded tables and DSP/host checksums matched, with no event overflow or late
+period. See [validation records](releases.md#validation-records) for source
+commits, exact results, earlier development checks and test limitations.
 
 The following tables retain the earlier measurements for comparison.
 
@@ -179,21 +181,23 @@ and compare with the host tool's prediction. Results of 2026-10-05:
 | `song.mid`, 13.5 s, five tracks, tempo change, GM reset, bend, pedal, drums | 990 | 138 | 2,884 | equal (6,797,716) | 0 |
 | `live.bin` as MIDI IN (`-i`), GM reset, running status, clock bytes, bend, drums | 247 | 7 | 205 | equal (7,781,472) | 0 |
 
-The checksum is the sum of every limited output word over the whole run. A
+The checksum is the sum of every limited output word over the whole run,
+modulo 2^24. A
 match, together with the counters and upload checks, is an integration check
 against the host reference; it does not prove that every individual word agrees.
 The gate also checks that the player's uploaded tables are byte for byte the bench fixture's.
 These dated results predate the later DSP reservation, user-mode table-upload
 and diagnostic changes; rerun the gates to validate the current build.
 
-The tightest period of `song.mid` leaves 225 frames (4.6 ms) of slack with
-render-ahead (58 without). Real songs, which are not shipped here, play the same
+After reset-burst removal, the recorded `song.mid` minimum slack is 225 frames
+(4.6 ms) with render-ahead and 58 frames without. Real songs, which are not shipped here, play the same
 way (see below).
 
 ### Songs to try
 
-Songs do not ship with this repository. Supply a collection of Standard MIDI
-Files or supported wrapped/XMIDI files from your own filesystem. The corpus
+The release includes a generated synthetic `DEMO.MID`; its generator is in
+`tools/opl/midi/make-test-midi.py`. No external song collection ships here.
+Supply a collection of Standard MIDI Files or supported wrapped/XMIDI files from your own filesystem. The corpus
 runner accepts explicit paths and does not require another project checkout.
 
 - `tools/opl/midi/xmi2mid.py <xmi file or directory> <out dir>` converts XMIDI to
@@ -241,5 +245,11 @@ if a keyboard is the intended input.
 
 Nine voices, mono (the OPL2 has no panning). Not implemented: aftertouch, fine
 tuning, SMPTE-timed files, format 2 files of several tracks, file looping (an XMIDI
-song's loops are not unrolled either), and the chip's rhythm mode. The modulation wheel switches vibrato on above 32. Percussion keys outside
+song's loops are not unrolled either), and the chip's rhythm mode. The modulation
+wheel switches vibrato on at values of 32 or greater. Percussion keys outside
 GM's 35-81 are ignored.
+
+The player writes integration counters to `RESULT.BIN` in its working directory
+when it exits. This file is used by the gates; it is not an audio recording.
+SMF playback reads at most 64 tracks and loads the file into RAM; minimum RAM
+for real hardware has not been qualified.

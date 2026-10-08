@@ -5,10 +5,10 @@ Atari Falcon030 with DSP56001 and TOS sound/DSP services.
 The emulator gates use TOS 4.02 and 14 MB ST-RAM; other memory sizes and
 TOS versions have not been qualified. No FPU is required.
 Physical Falcon playback, actual MIDI IN and audio quality are unverified.
-This initial release is intended for hardware testing.
+This preview is intended for hardware testing.
 
 INSTALL
-Extract OPL2.ZIP on your computer. Transfer F030MID.TTP and your own .MID
+Extract OPL2.ZIP on your computer. Transfer F030MID.TTP, DEMO.MID and your .MID
 files to the Falcon, using a floppy disk, SD/CF card or another transfer
 method suitable for your machine. Use TOS-compatible 8.3 filenames.
 The DSP image and General MIDI bank are embedded in the player.
@@ -19,8 +19,10 @@ PLAY A MIDI FILE
 Double-click F030MID.TTP. Enter a filename in the parameter box:
   DEMO.MID
 Use your own filename to play another .MID file.
-Any key stops playback; the program also exits when the file ends.
-With no parameters it plays SONG.MID from the current directory if present.
+A key requests a stop (polled about once a second for files).
+Files end after about two seconds of release tail.
+With no parameters it checks MIDIIN.RAW first, then SONG.MID, then
+falls back to live MIDI IN. Enter DEMO.MID explicitly to play the demo.
 
 LIVE MIDI SYNTHESIZER
 Connect a keyboard/controller or MIDI source to the Falcon's MIDI IN.
@@ -32,7 +34,8 @@ The Falcon produces the sound through its audio output.
 OPTIONS
   -n       Turn off render-ahead (default for live MIDI).
   -a       Turn on render-ahead (default for file playback).
-  -t 30    Limit playback/input to 30 seconds.
+  -t 30    Limit physical live MIDI input to about 30 seconds.
+           Does not limit .MID or raw-file playback.
   -d       Print machine diagnostics and pause at setup stages.
 Example for diagnosing a hardware failure:
   -d SONG.MID
@@ -40,13 +43,14 @@ An empty DIAG.FLG file also enables diagnostics. Remove it for normal use.
 
 DESKTOP WITHOUT PARAMETERS
 F030MID.TOS is the same executable under a different extension. Place it
-with a file named SONG.MID and double-click it. With no song it falls back
-to live MIDI input. F030MID.TTP is recommended for selecting a song or mode.
+with a file named SONG.MID and double-click it. MIDIIN.RAW, if present,
+takes precedence; with neither input file it falls back to live MIDI IN. F030MID.TTP is recommended for selecting a song or mode.
 
 LIMITS AND VALIDATION
 Nine simultaneous voices, mono OPL2 synthesis sent to stereo audio.
 SMF formats 0/1 and single-track format 2 with ticks-per-quarter timing
-are supported. There is no file looping or SMPTE timing support.
+are supported, reading at most 64 tracks and loading the file into RAM.
+There is no file looping or SMPTE timing support.
 Host checks and calibrated-emulator MIDI gates pass with equal aggregate
 DSP/host checksums and no late periods. Live input is gated using recorded
 MIDI bytes, not the physical MIDI port. This is an approximate practical

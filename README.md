@@ -8,8 +8,9 @@ loader, standalone stream harnesses and a MIDI player.
 
 The main application is **F030MID**, one program with two uses:
 
-- **MIDI file player:** build `release/f030mid.tos`, rename a copy to
-  `F030MID.TTP`, and enter a `.mid` filename in the desktop's parameter box.
+- **MIDI file player:** download `F030MID.TTP` (or build and rename a copy
+  of `release/f030mid.tos`), and enter a `.mid` filename in the desktop's
+  parameter box.
 - **Live MIDI synthesizer:** start `F030MID.TTP` with `-l` to receive notes
   through the Falcon's MIDI IN port and play them through its audio output.
 
@@ -39,7 +40,7 @@ Set `DOSBOX` and `PYTHON` in ignored `local.mk` if needed. The MIDI player's
 68030 program also needs the MiNT cross compiler (`m68k-atari-mintelf-g++`,
 with headers providing `mint/falcon.h`); put it on PATH or set `M68K_CXX`
 in `local.mk`. Set the `HATARI` environment variable to the calibrated emulator
-binary for gates; see [the gate environment](docs/hatari-timing.md). Gates that
+binary for gates; see [the gate environment](docs/releases.md#gate-environment). Gates that
 drive the emulator need the shell to find the `/ucrt64/bin` DLLs and a `HOME`.
 
 ```sh
@@ -55,7 +56,8 @@ The MIDI player's other targets: `make midi-host` (the host tool `opl-midi` and 
 unit test, part of `make all` and `make check`), `make midi-wav MIDI_FILE=song.mid
 WAV=song.wav` (render a file to a WAV on the PC), and `make midi-hatari
 MIDI_FILE=song.mid` (play it in the calibrated Hatari with sound). The stream
-gate takes `--render-ahead`; the MIDI player takes `-a`/`-n` (its gate uses `--ahead on|off`). See
+gate takes `--render-ahead`; the MIDI player takes `-a`/`-n` (its gate uses
+`--ahead on|off`). See
 [the render-ahead ring](docs/speed-quality.md#render-ahead-ring).
 
 `release/f030opl2.tos` is the standalone stream harness. It reads
@@ -66,7 +68,13 @@ program. Generate a synthetic nine-channel score with:
 tools/opl/build/headless/opl-rt-fixture stress release/OPLDATA.BIN release/EXPECT.BIN --seconds 10 --play release/PLAYDATA.BIN
 ```
 
-For a captured register trace replace `stress` with `trace --trace path/to/opl-writes.ev`.
+For a captured register trace, use `trace` as the scenario and pass the trace
+option after the two output paths:
+
+```sh
+tools/opl/build/headless/opl-rt-fixture trace release/OPLDATA.BIN release/EXPECT.BIN --trace path/to/opl-writes.ev --seconds 10 --play release/PLAYDATA.BIN
+```
+
 This is a register-stream player and integration foundation; it does not load IMF,
 DRO or game music formats directly (MIDI is `f030mid.tos`'s job). `release/oplrt.tos`
 is the frame comparison harness; `oplbench.tos` measures the slower exact kernel.
@@ -112,10 +120,13 @@ model differences, table generation, licensing and verification boundaries.
   the GM bank (`gm-bank.h`, GPL-3.0-or-later). `tools/opl/midi-corpus.py`
   plays a collection of songs through it on the emulated Falcon.
 - `src/`: two-stage boot loader, XBIOS definitions and hardware probes.
-- `docs/validation.json`: the initial gate results.
-- `tools/opl/README.md`: current tool map, commands and evidence boundaries.
-- `docs/dsp56001-notes.md`: practical DSP layout, SSI and boot/upload rules.
-- `docs/hatari-timing.md`: calibrated emulator selection and what gates measure.
+- [Player guide](docs/midi-player.md): startup, MIDI behavior and limitations.
+- [DSP implementation and references](docs/provenance.md): models, layout,
+  transport, boot and attribution.
+- [Speed and quality](docs/speed-quality.md): optimization measurements and
+  remaining work.
+- [Releases and validation](docs/releases.md): downloads, gate setup,
+  historical records and release preparation.
 
 `make all` builds DSP harnesses and host tools; `make midi-tos` separately
 builds the Falcon MIDI player. `src/` also retains hardware-probe
@@ -131,15 +142,15 @@ optimizations, the profiling method and the ranked list of what is left, and
 [the MIDI player](docs/midi-player.md) for the player, its decisions and its
 verification.
 
-Fresh verification of source commit `8961ed6` on 2026-10-08 is recorded in
-[the current validation snapshot](docs/current-validation.json). Host checks, five DSP bench
-cases, one-second stress/rhythm streams in both render-ahead modes, and MIDI
-file/live gates passed. The external corpus, starvation and layered gates,
-audio audition and hardware playback were not rerun.
+The published `v0.1.0` player passed its packaged demo in both render-ahead
+modes and raw live-input gates. See [validation records](docs/releases.md#validation-records)
+for the tested commits, earlier baselines and limits.
 
-To build a release package from committed sources:
+To reproduce the published package, use a clean checkout of tag `v0.1.0`
+with the build dependencies configured:
 
 ```sh
+git switch --detach v0.1.0
 make midi-release VERSION=v0.1.0
 ```
 

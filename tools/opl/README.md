@@ -3,8 +3,8 @@
 This directory contains the standalone host reference, DSP implementation,
 68030 stream harness and shared MIDI pipeline. Build from the repository root;
 see [build instructions](../../README.md), [MIDI playback](../../docs/midi-player.md),
-[the DSP notes](../../docs/dsp56001-notes.md) and
-[gate environment](../../docs/hatari-timing.md).
+[DSP implementation and references](../../docs/provenance.md) and
+[releases and gate environment](../../docs/releases.md#gate-environment).
 
 ## Source map
 
@@ -35,7 +35,10 @@ make midi-hatari MIDI_FILE=song.mid
 `make all` builds DSP harnesses and host tools; the MiNT cross-compiled MIDI
 player is built by `make midi-tos`. Build output is in `tools/opl/build`,
 `build` and `release`, all ignored. No game assets or song collection ships here.
-The synthetic gates generate their inputs locally.
+The synthetic gates generate their inputs locally; the downloadable package
+includes the generated score as `DEMO.MID`. `make midi-release` packages the
+player and source, and `make package-gate` tests the packaged player. See
+[release preparation](../../docs/releases.md).
 
 The practical kernel renders at approximately 49.17 kHz with 32-frame controls
 and sample-stamped writes. Stream periods are 768 frames. OPL2 playback uses
@@ -63,8 +66,5 @@ The practical reference is not a chip oracle. Historical results are not new
 runs, and neither audible quality nor physical-Falcon playback is established
 by emulator gates.
 
-Fresh verification of source commit `8961ed6` on 2026-10-08 is recorded in
-[the current validation snapshot](../../docs/current-validation.json). Host checks, five DSP bench
-cases, one-second stress/rhythm streams in both render-ahead modes, and MIDI
-file/live gates passed. The external corpus, starvation and layered gates,
-audio audition and hardware playback were not rerun.
+See [validation records](../../docs/releases.md#validation-records) for the
+published player, the earlier development snapshot and their distinct scopes.

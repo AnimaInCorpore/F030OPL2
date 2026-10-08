@@ -1,0 +1,166 @@
+{
+  "date": "2026-10-08",
+  "release_tag": "v0.1.0",
+  "source_commit": "9dd60bd54108cafb7dc0a8903ff8b97bb3235dda",
+  "note": "Retained results of the packaged-release gates run before publication; not new DSP/MIDI gate runs during this documentation audit.",
+  "release_url": "https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.1.0",
+  "prerelease": true,
+  "commands": [
+    "make check",
+    "make package-gate VERSION=v0.1.0 M68K_CXX=$HOME/Work/cross-mint/bin/m68k-atari-mintelf-g++"
+  ],
+  "host_checks": {
+    "practical_failures": 0,
+    "midi_checks": 158,
+    "midi_failures": 0
+  },
+  "packaged_player_sha256": "f10991c545d03e04be8430e4656a4e654549ed586ef60d3edffe5bc2c05644c7",
+  "assets": [
+    {
+      "name": "F030MID.TOS",
+      "size": 177546,
+      "digest": "sha256:f10991c545d03e04be8430e4656a4e654549ed586ef60d3edffe5bc2c05644c7"
+    },
+    {
+      "name": "F030MID.TTP",
+      "size": 177546,
+      "digest": "sha256:f10991c545d03e04be8430e4656a4e654549ed586ef60d3edffe5bc2c05644c7"
+    },
+    {
+      "name": "F030OPL2-SOURCE.tar.gz",
+      "size": 187190,
+      "digest": "sha256:83f050abfeb90316a5a397220ddc0e0c685eca1f8e84f4da551fa228f5574f3c"
+    },
+    {
+      "name": "OPL2.ZIP",
+      "size": 209266,
+      "digest": "sha256:9d64f8ab2a170fd87fe8df6356273eecdf5958add8c47ca01f4bb7d5f23a8128"
+    },
+    {
+      "name": "SHA256.TXT",
+      "size": 320,
+      "digest": "sha256:5e9ac508f816b3dce792c1f83c52a975b19bd99987453c4ff8038d3a077b41a2"
+    }
+  ],
+  "midi_gates": [
+    {
+      "result_path": "build/package-gate-on/results.json",
+      "date": "2026-10-08",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "DEMO.MID",
+      "tables_match_fixture": true,
+      "render_ahead": "on",
+      "song_seconds": 13.45,
+      "periods_expected": 990,
+      "periods_submitted": 990,
+      "periods_rendered_mod_4096": 990,
+      "late_periods": 0,
+      "note_ons_expected": 138,
+      "note_ons_seen": 138,
+      "parameter_events_expected": 2884,
+      "parameter_events_sent": 2884,
+      "event_overflow": false,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "min_slack_frames": 225,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/package-gate-off/results.json",
+      "date": "2026-10-08",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "DEMO.MID",
+      "tables_match_fixture": true,
+      "render_ahead": "off",
+      "song_seconds": 13.45,
+      "periods_expected": 990,
+      "periods_submitted": 990,
+      "periods_rendered_mod_4096": 990,
+      "late_periods": 0,
+      "note_ons_expected": 138,
+      "note_ons_seen": 138,
+      "parameter_events_expected": 2884,
+      "parameter_events_sent": 2884,
+      "event_overflow": false,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "min_slack_frames": 58,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/package-gate-live/results.json",
+      "date": "2026-10-08",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "live.bin",
+      "tables_match_fixture": true,
+      "render_ahead": "default",
+      "song_seconds": 1.843,
+      "periods_expected": 247,
+      "periods_submitted": 247,
+      "periods_rendered_mod_4096": 247,
+      "late_periods": 0,
+      "note_ons_expected": 7,
+      "note_ons_seen": 7,
+      "parameter_events_expected": 205,
+      "parameter_events_sent": 205,
+      "event_overflow": false,
+      "checksum_expected": 7781472,
+      "checksum_dsp": 7781472,
+      "checksum_equal": true,
+      "min_slack_frames": 226,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    }
+  ],
+  "not_run": [
+    "External song corpus",
+    "Starvation injection",
+    "Layered 18-channel gate",
+    "Audio audition",
+    "Physical MIDI port input",
+    "Physical Falcon playback"
+  ],
+  "limitations": [
+    "TOS 4.02 and 14 MB emulated ST-RAM only; minimum memory and other TOS versions unqualified.",
+    "Raw input tests the pipeline after byte receipt, not the physical MIDI port.",
+    "Aggregate checksums do not establish individual-sample equality.",
+    "Practical host model is not an exact chip oracle."
+  ]
+}
