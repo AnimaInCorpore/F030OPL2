@@ -1,0 +1,242 @@
+{
+  "date": "2026-10-08",
+  "source_commit": "8961ed6810792bfd969acfc8bae4c4ab66ba0c8f",
+  "worktree_note": "Documentation cleanup and removal of unused tools/hatari_binary.py; synthesis, MIDI and transport sources unchanged.",
+  "hatari": {
+    "build": "DSP-calibrated Hatari executable selected for this validation run",
+    "sha256": "b3279c6de6893a666e8e3c87b65eb4cf69f10f296a098b39272f7757731f1f7d"
+  },
+  "toolchain_submodule": "9a87bd904e515224b02272ecfa42bf143215db5e",
+  "commands": [
+    "make check",
+    "make dsp-gate stream-gate rhythm-gate GATE_ARGS='--seconds 1'",
+    "python3 tools/opl/rt-stream-gate.py --scenario stress --seconds 1 --render-ahead --output build/docs-stream-gate-ahead",
+    "python3 tools/opl/rt-stream-gate.py --scenario rhythm --seconds 1 --render-ahead --output build/docs-rhythm-gate-ahead",
+    "make midi-gate midi-live-gate M68K_CXX=$HOME/Work/cross-mint/bin/m68k-atari-mintelf-g++"
+  ],
+  "host_checks": {
+    "practical_failures": 0,
+    "midi_checks": 158,
+    "midi_failures": 0
+  },
+  "dsp_bench": {
+    "source_sha256": {
+      "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff",
+      "m68k/oplrt.s": "9905ca7b528c622a8ad90d46cf805171c0ec3dab823548c81700951cf8678f20",
+      "rt-fixture.cpp": "e2c6a74a93171d60e842136f4830ed1a3c451db1735188a42f0e2296e61336bf",
+      "opl-practical.h": "4b00471cb0ce9d4f9daa6a1d8cddce4dd4fcc586b3703005406172e5e37052b5",
+      "rt-bench-gate.py": "af3877f21e6ab6912f83a2c308cc1746334bb0a3b270bc5e56dd6aedff114dc2",
+      "generate-tables.py": "5fbf0bf2bff03b3d0cb72b9932a7de5cda3a6c0dde1f971da2778f5f082a1371"
+    },
+    "dsp_program_words": 2148,
+    "cases": [
+      {
+        "scenario": "stress",
+        "seconds": 1.0,
+        "frame_words_compared": 49152,
+        "mismatches_against_host_kernel": 0,
+        "bit_exact": true,
+        "instruction_cycles_per_frame": 286.87
+      },
+      {
+        "scenario": "timing",
+        "seconds": 1.0,
+        "frame_words_compared": 49152,
+        "mismatches_against_host_kernel": 0,
+        "bit_exact": true,
+        "instruction_cycles_per_frame": 295.46
+      },
+      {
+        "scenario": "paths",
+        "seconds": 1.0,
+        "frame_words_compared": 49152,
+        "mismatches_against_host_kernel": 0,
+        "bit_exact": true,
+        "instruction_cycles_per_frame": 231.64
+      },
+      {
+        "scenario": "phase",
+        "seconds": 1.0,
+        "frame_words_compared": 49152,
+        "mismatches_against_host_kernel": 0,
+        "bit_exact": true,
+        "instruction_cycles_per_frame": 258.51
+      },
+      {
+        "scenario": "rhythm",
+        "seconds": 1.0,
+        "frame_words_compared": 49152,
+        "mismatches_against_host_kernel": 0,
+        "bit_exact": true,
+        "instruction_cycles_per_frame": 254.41
+      }
+    ]
+  },
+  "streams": [
+    {
+      "result_path": "build/stream-gate/results.json",
+      "source_sha256": {
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff",
+        "m68k/oplplay.s": "cc70bb0cc91a13cacf9ec7c9ddc41863ce8dfcac5931f083d78926fed2517d22",
+        "rt-fixture.cpp": "e2c6a74a93171d60e842136f4830ed1a3c451db1735188a42f0e2296e61336bf",
+        "opl-practical.h": "4b00471cb0ce9d4f9daa6a1d8cddce4dd4fcc586b3703005406172e5e37052b5"
+      },
+      "scenario": "stress",
+      "seconds": 1.0,
+      "render_ahead": false,
+      "periods_submitted": 64,
+      "periods_rendered": 64,
+      "checksum_expected": 16639700,
+      "checksum_dsp": 16639700,
+      "checksum_equal": true,
+      "late_periods": 0,
+      "min_slack_frames": 10
+    },
+    {
+      "result_path": "build/rhythm-gate/results.json",
+      "source_sha256": {
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff",
+        "m68k/oplplay.s": "cc70bb0cc91a13cacf9ec7c9ddc41863ce8dfcac5931f083d78926fed2517d22",
+        "rt-fixture.cpp": "e2c6a74a93171d60e842136f4830ed1a3c451db1735188a42f0e2296e61336bf",
+        "opl-practical.h": "4b00471cb0ce9d4f9daa6a1d8cddce4dd4fcc586b3703005406172e5e37052b5"
+      },
+      "scenario": "rhythm",
+      "seconds": 1.0,
+      "render_ahead": false,
+      "periods_submitted": 64,
+      "periods_rendered": 64,
+      "checksum_expected": 11209448,
+      "checksum_dsp": 11209448,
+      "checksum_equal": true,
+      "late_periods": 0,
+      "min_slack_frames": 0
+    },
+    {
+      "result_path": "build/docs-stream-gate-ahead/results.json",
+      "source_sha256": {
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff",
+        "m68k/oplplay.s": "cc70bb0cc91a13cacf9ec7c9ddc41863ce8dfcac5931f083d78926fed2517d22",
+        "rt-fixture.cpp": "e2c6a74a93171d60e842136f4830ed1a3c451db1735188a42f0e2296e61336bf",
+        "opl-practical.h": "4b00471cb0ce9d4f9daa6a1d8cddce4dd4fcc586b3703005406172e5e37052b5"
+      },
+      "scenario": "stress",
+      "seconds": 1.0,
+      "render_ahead": true,
+      "periods_submitted": 64,
+      "periods_rendered": 64,
+      "checksum_expected": 16639700,
+      "checksum_dsp": 16639700,
+      "checksum_equal": true,
+      "late_periods": 0,
+      "min_slack_frames": 9
+    },
+    {
+      "result_path": "build/docs-rhythm-gate-ahead/results.json",
+      "source_sha256": {
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff",
+        "m68k/oplplay.s": "cc70bb0cc91a13cacf9ec7c9ddc41863ce8dfcac5931f083d78926fed2517d22",
+        "rt-fixture.cpp": "e2c6a74a93171d60e842136f4830ed1a3c451db1735188a42f0e2296e61336bf",
+        "opl-practical.h": "4b00471cb0ce9d4f9daa6a1d8cddce4dd4fcc586b3703005406172e5e37052b5"
+      },
+      "scenario": "rhythm",
+      "seconds": 1.0,
+      "render_ahead": true,
+      "periods_submitted": 64,
+      "periods_rendered": 64,
+      "checksum_expected": 11209448,
+      "checksum_dsp": 11209448,
+      "checksum_equal": true,
+      "late_periods": 0,
+      "min_slack_frames": 0
+    }
+  ],
+  "midi": [
+    {
+      "result_path": "build/midi-gate/results.json",
+      "effective_render_ahead": true,
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "song.mid",
+      "render_ahead": "default",
+      "song_seconds": 13.45,
+      "periods_submitted": 990,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "tables_match_fixture": true,
+      "late_periods": 0,
+      "event_overflow": false,
+      "min_slack_frames": 225
+    },
+    {
+      "result_path": "build/midi-gate-off/results.json",
+      "effective_render_ahead": false,
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "song.mid",
+      "render_ahead": "off",
+      "song_seconds": 13.45,
+      "periods_submitted": 990,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "tables_match_fixture": true,
+      "late_periods": 0,
+      "event_overflow": false,
+      "min_slack_frames": 58
+    },
+    {
+      "result_path": "build/midi-live-gate/results.json",
+      "effective_render_ahead": false,
+      "source_sha256": {
+        "midi/f030mid.cpp": "44bca27c2ace2927b1d631da3711e8637722c3f813400df2a19cf0564f82f457",
+        "midi/midi-opl.h": "ec9f593b2d11c1665fed50c815f08dd31c7bfa0e4c5f2848d1f4c92bde2d24ac",
+        "midi/midi-file.h": "7c352ba7534659cefcd65b1a7389679e5280a4593cabf55f5a3dfd17832fba5d",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "live.bin",
+      "render_ahead": "default",
+      "song_seconds": 1.843,
+      "periods_submitted": 247,
+      "checksum_expected": 7781472,
+      "checksum_dsp": 7781472,
+      "checksum_equal": true,
+      "tables_match_fixture": true,
+      "late_periods": 0,
+      "event_overflow": false,
+      "min_slack_frames": 226
+    }
+  ],
+  "not_run": [
+    "External song corpus",
+    "Starvation injection",
+    "Layered 18-channel gate",
+    "Audio audition",
+    "Physical MIDI port input",
+    "Physical Falcon playback"
+  ],
+  "limits": [
+    "One-second synthetic stream windows only; not an endurance run.",
+    "Stream and MIDI checksums are aggregate sums, not individual-sample comparisons.",
+    "Practical host reference is not an exact chip oracle.",
+    "Hatari timing is a model; rhythm minimum reported slack is zero."
+  ],
+  "baseline": "docs/validation.json and dated measurements in docs/speed-quality.md and docs/midi-player.md retained unchanged as historical evidence."
+}

@@ -1,21 +1,23 @@
-# Speed and quality informed by F030SID
+# Speed and quality
 
-SID's measured frame costs include work that average synthesis benchmarks can
-miss: SSI interrupts, output writes, diagnostics and bursts of register events.
-Its quality work also shows why reducing sample rate to save cycles is costly.
+Whole-stream frame costs include SSI interrupts, output writes, diagnostics
+and bursts of register events. Quality checks must account for aliasing when
+considering a lower sample rate.
 
 Contents, in the order the work was done, with where it stands:
 
 - the output loop and rhythm-noise optimizations, and the noise stage's operand
   ring (done, bit exact);
-- where the remaining cost is, and an investigation of what else F030SID and
-  F030MXDRV offer, with a ranked list (items 1 and 3 done; 2, 4 and 5 open);
+- where the remaining cost is, with a ranked list of further work (items 1 and 3 done; 2, 4 and 5 open);
 - the render-ahead ring, which banks the idle time quiet periods leave (done,
   off by default, on when F030MID plays a file);
 - the removal of the reset-event burst at start (done).
 
-All figures are the calibrated Hatari's model, not hardware, and every change was
-checked bit for bit against the practical host reference.
+The figures below are retained historical F030OPL2 measurements from the
+initial validation and 2026-10-05 optimization work, not fresh runs of the current checkout.
+They use the calibrated Hatari model, not hardware. DSP bench cases compare
+individual frames against the practical host reference; stream and MIDI runs
+compare aggregate checksums and counters.
 
 ## Implemented output-loop optimization
 
@@ -34,7 +36,7 @@ The margin remains thin and needs physical-hardware validation.
 
 ## Quality features preserved and verified
 
-The current local ScummVM sources have improvements beyond their older prose:
+The kernel retains these quality features:
 sample-stamped parameter events split the fixed control blocks; the rhythm
 noise advances by the chip's 36 slot clocks using lookup jumps, including exact
 catch-up after silent spans. Unit checks cover noise state, every render split,
@@ -42,25 +44,25 @@ waveform-select enable, pitch, attack, feedback routing and reset behavior.
 
 Keep the 49.17 kHz codec rate and 32-frame envelope/LFO cadence. This avoids the
 extra aliasing of 32.78 kHz while retaining the established real-time kernel.
-SID-style polyBLEP corrects discontinuous saw/pulse edges; OPL's modulated sine
+Saw/pulse polyBLEP corrects discontinuous saw/pulse edges; OPL's modulated sine
 path requires its own quality analysis, so it is not transplanted here.
 
 Further quality work should compare the practical kernel against the exact
 OPL reference before and after changing envelope cadence, native-rate rendering
-or resampling. These are future improvements, not claims about this import.
+or resampling. These are future improvements, not claims about this implementation.
 
 ## Rhythm loop optimization
 
 The 36-clock noise jump now pairs a table read with an XOR and runs inline in
 the hardware loop. Removing the single-use JSR/RTS and loop-tail NOP follows
-SID's approach of keeping common work straight-line in internal program RAM.
+the practice of keeping common work straight-line in internal program RAM.
 On the one-second rhythm stress stream, late periods dropped from two to one,
 with the same checksum (11,209,448).
 
-## Noise stage operand ring (F030SID's parallel-move discipline)
+## Noise stage operand ring
 
-SID's kernel loads constants on the parallel-move slot of an ALU instruction
-instead of spending an instruction (two cycles for a long immediate) on them.
+Constants can load in the parallel-move slot of an ALU instruction instead
+of spending an instruction (two cycles for a long immediate) on them.
 `stage_drum_noise` still spent twelve of its 33 cycles per frame on six
 `move #>constant` loads. Its five operands (>> 6, the two-bit mask, the drum
 table address, >> 8, >> 16) now sit in a modulo-5 ring in Y internal at `$0070`,
@@ -105,23 +107,22 @@ descriptors to replace the five pointer counters of `render_channels`, carrier
 pointers by address arithmetic in `load_carrier*`, and skipping steady
 operators in music without tremolo or vibrato.
 
-## What else F030SID and F030MXDRV offer: an investigation (2026-10-05)
+## Further optimization work (2026-10-05)
 
 (Items 1 and 3 of the ranking below have since been implemented; their
 sections follow the list.)
 
 Real music exposed a limit the synthetic gates did not: Falcon 3's `C.MID`
-played with one late period and `F.MID` with four, though every output word
-matched the reference. A period-by-period profile (a one-shot Hatari DSP
+played with one late period and `F.MID` with four, though the aggregate output
+checksums matched the reference. A period-by-period profile (a one-shot Hatari DSP
 profile of period N, taken with `:<count>` breakpoints on `rp_go` and
 `rp_counted`) showed the cause. The late period, 1535 of 2304, cost 336
 cycles per frame against its neighbours' 285-300 and the 326-cycle budget.
 Only about 7 of the extra 51 cycles were synthesis; about 36 were
 `track_halves` and `wait_rx`, the DSP standing in the host-port receive of the
 next period's 59-140 events, word by word at the 68030's pace, in the middle
-of the render. F030MXDRV's note on its early-accept pipeline says to take the
-parked refill in the boundary wait, not mid-render; this kernel did it between
-every block.
+of the render. Receiving the parked refill in the boundary wait avoids this
+cost during rendering; the kernel previously received it between every block.
 
 **Applied.** `render_period` no longer calls `early_receive` between blocks;
 the refill is taken in the waits after the render, where the DSP has nothing
@@ -137,33 +138,31 @@ The margin in the densest periods is still a fraction of a millisecond.
 `--starve` reports 61 late periods against an expected 62.7 with this change
 and without it, so that check's tolerance, not the change, is the issue.
 
-**Ranked, not yet done.**
+**Ranked work (completed items marked).**
 
-1. *Render-ahead ring at block granularity* (SID's protocol v7): **done, see
+1. *Render-ahead ring at block granularity*: **done, see
    below.**
-2. *Cycle-stamped events with a horizon, pushed continuously* (SID's
-   `STREAM_PUSH`). Removes the per-period READY handshake and cuts live-MIDI
+2. *Cycle-stamped events with a horizon, pushed continuously*. Removes the per-period READY handshake and cuts live-MIDI
    latency from about two periods (31 ms) to a few blocks, since an event no
    longer waits for its period to be assembled.
 3. *No reset burst at start*: **done, see the end of this file.**
-4. *Steady-state envelope handlers* (SID's frozen/resting-at-sustain voices).
+4. *Steady-state envelope handlers*.
    An operator in sustain without tremolo or vibrato need not rerun the
    boundary pass: it would cut the pass's 42 cycles per frame in music, not in
    the stress case.
 5. *Parallel-move constants in the remaining hot code*, as done for the noise
    stage: the five stride counters of `render_channels` and the carrier
    pointers of `load_carrier*`, about 5-6 cycles per frame.
-6. *Not worth it here:* MXDRV's Timer-A producer queue (this host does a few
-   hundred cycles of work per period) and SID's polyBLEP (AGENTS.md).
+6. *Not worth it here:* a Timer-A producer queue (this host does a few
+   hundred cycles of work per period) and saw/pulse polyBLEP (AGENTS.md).
 
-## Render-ahead ring (F030SID's stream design)
+## Render-ahead ring
 
 The stream rendered a half of the SSI ring only once the transmitter had left
 it, so a period had exactly one period of time and idle time could not be
 banked: a period that cost more was late however quiet the ones before it were.
-SID's stream instead renders whenever the ring has room. With a host-set flag
-(`X:$0096`, `OplPractical::SC_RENDER_AHEAD`) this kernel now does the same, at
-block granularity: before each 32-frame block `slot_wait` returns once the
+The render-ahead mode renders whenever the ring has room. With a host-set flag
+(`X:$0096`, `OplPractical::SC_RENDER_AHEAD`) it waits at block granularity: before each 32-frame block `slot_wait` returns once the
 transmitter has played that block's 64 ring words (immediately in the half the
 transmitter is not in, once it is past the slot in the half it is in), and until
 then the DSP does the host's work and watches the transmitter. The period is
@@ -174,7 +173,8 @@ half all along, so its being there says nothing). The slack the kernel reports
 is now the ring words before the transmitter reaches the half just rendered,
 without the old clamp, so it runs up to two periods.
 
-The DSP program is now 2,148 words (2,069 at the import); the internal-program
+The render-ahead change produced a 2,148-word DSP program (2,069 after the
+initial output-loop work); the internal-program
 limit and the check that keeps the kernel clear of the OPL3 Y tables still hold.
 
 Off by default for the stream gates and for live MIDI, on by default when
@@ -213,3 +213,9 @@ still equals the host's (`a440`, `song`, Falcon 3 `C`, `F`, Ultima 4
 `Combat`, live input), and with render-ahead the tightest slack rose by about
 35 frames on each song: `C.MID` 428 to 463, `F.MID` 261 to 296, `song.mid`
 191 to 225, `Combat` 538 to 573.
+
+Fresh verification of source commit `8961ed6` on 2026-10-08 is recorded in
+[the current validation snapshot](current-validation.json). Host checks, five DSP bench
+cases, one-second stress/rhythm streams in both render-ahead modes, and MIDI
+file/live gates passed. The external corpus, starvation and layered gates,
+audio audition and hardware playback were not rerun.
