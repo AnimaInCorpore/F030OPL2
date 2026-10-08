@@ -120,3 +120,15 @@ midi-wav: midi-host
 # Listen in the calibrated Hatari: make midi-hatari MIDI_FILE=song.mid
 midi-hatari: midi-tos
 	$(PYTHON) $(OPL)/midi-hatari.py $(MIDI_FILE)
+
+# Transfer-ready release package; commit sources first so BUILD.TXT names them.
+.PHONY: midi-release
+midi-release: midi-tos build/midi-test/song.mid
+	$(PYTHON) tools/package-midi-release.py --version "$(VERSION)"
+
+# Gate the actual packaged binary and demo, with both rendering modes.
+.PHONY: package-gate
+package-gate: midi-release midi-host
+	$(PYTHON) $(OPL)/midi-gate.py release/$(VERSION)/DEMO.MID --tos release/$(VERSION)/F030MID.TTP --ahead on --output build/package-gate-on
+	$(PYTHON) $(OPL)/midi-gate.py release/$(VERSION)/DEMO.MID --tos release/$(VERSION)/F030MID.TTP --ahead off --output build/package-gate-off
+	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/live.bin --raw --tos release/$(VERSION)/F030MID.TTP --output build/package-gate-live

@@ -19,6 +19,18 @@ instrument bank, with nine simultaneous voices. See
 installation and verification. Emulator gates pass; audio audition, successful
 physical-Falcon playback and actual MIDI-port input remain unestablished.
 
+## Download for a Falcon
+
+Download [OPL2.ZIP](https://github.com/AnimaInCorpore/F030OPL2/releases/download/v0.1.0/OPL2.ZIP)
+from [GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases).
+Extract it and transfer `F030MID.TTP` and `DEMO.MID` to the Falcon.
+Double-click the player and enter `DEMO.MID`, your own `.mid` filename, or `-l`
+for live MIDI IN synthesis.
+The ZIP includes a `.TOS` copy, 40-column instructions, source notices and build identity;
+the player files are also available as separate downloads. No compilation or
+separate DSP image is needed on the Falcon. The initial release is a prerelease
+for hardware testing; physical playback and MIDI-port input remain unverified.
+
 ## Build and verify
 
 Use an MSYS2 login shell on Windows with `/ucrt64/bin` on PATH. Dependencies:
@@ -124,3 +136,13 @@ Fresh verification of source commit `8961ed6` on 2026-10-08 is recorded in
 cases, one-second stress/rhythm streams in both render-ahead modes, and MIDI
 file/live gates passed. The external corpus, starvation and layered gates,
 audio audition and hardware playback were not rerun.
+
+To build a release package from committed sources:
+
+```sh
+make midi-release VERSION=v0.1.0
+```
+
+This creates `release/v0.1.0/OPL2.ZIP`, direct player downloads, the matching
+`F030OPL2-SOURCE.tar.gz` archive and `SHA256.TXT`. Run
+`make package-gate VERSION=v0.1.0` to test the packaged demo and player. See [release packaging](docs/releases.md) for validation and publishing.

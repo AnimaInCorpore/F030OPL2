@@ -6,7 +6,9 @@ MIDI through its MIDI IN port. Both use the DSP OPL2 engine, the included
 General MIDI bank and nine simultaneous voices, with audio sent to the Falcon
 DAC at approximately 49.17 kHz.
 
-Build with `make midi-tos`. For desktop use, rename a copy of
+Download the ready-to-transfer player in `OPL2.ZIP` from
+[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases), or
+build with `make midi-tos`. For desktop use, rename a copy of
 `release/f030mid.tos` to `F030MID.TTP`; the TTP extension lets the desktop ask
 for parameters. Enter `SONG.MID` to play a file or `-l` for live input. The same
 binary provides both modes. Successful physical-Falcon playback and actual

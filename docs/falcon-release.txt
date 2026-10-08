@@ -1,0 +1,62 @@
+F030OPL2 @VERSION@ - Falcon MIDI player and synthesizer
+
+REQUIREMENTS
+Atari Falcon030 with DSP56001 and TOS sound/DSP services.
+The emulator gates use TOS 4.02 and 14 MB ST-RAM; other memory sizes and
+TOS versions have not been qualified. No FPU is required.
+Physical Falcon playback, actual MIDI IN and audio quality are unverified.
+This initial release is intended for hardware testing.
+
+INSTALL
+Extract OPL2.ZIP on your computer. Transfer F030MID.TTP and your own .MID
+files to the Falcon, using a floppy disk, SD/CF card or another transfer
+method suitable for your machine. Use TOS-compatible 8.3 filenames.
+The DSP image and General MIDI bank are embedded in the player.
+No separate DSP loader, .LOD, OPLDATA.BIN or PLAYDATA.BIN is needed.
+DEMO.MID is a generated synthetic test score. Supply your own songs.
+
+PLAY A MIDI FILE
+Double-click F030MID.TTP. Enter a filename in the parameter box:
+  DEMO.MID
+Use your own filename to play another .MID file.
+Any key stops playback; the program also exits when the file ends.
+With no parameters it plays SONG.MID from the current directory if present.
+
+LIVE MIDI SYNTHESIZER
+Connect a keyboard/controller or MIDI source to the Falcon's MIDI IN.
+Double-click F030MID.TTP and enter:
+  -l
+Any key quits. Both modes use nine OPL2 voices and the included GM bank.
+The Falcon produces the sound through its audio output.
+
+OPTIONS
+  -n       Turn off render-ahead (default for live MIDI).
+  -a       Turn on render-ahead (default for file playback).
+  -t 30    Limit playback/input to 30 seconds.
+  -d       Print machine diagnostics and pause at setup stages.
+Example for diagnosing a hardware failure:
+  -d SONG.MID
+An empty DIAG.FLG file also enables diagnostics. Remove it for normal use.
+
+DESKTOP WITHOUT PARAMETERS
+F030MID.TOS is the same executable under a different extension. Place it
+with a file named SONG.MID and double-click it. With no song it falls back
+to live MIDI input. F030MID.TTP is recommended for selecting a song or mode.
+
+LIMITS AND VALIDATION
+Nine simultaneous voices, mono OPL2 synthesis sent to stereo audio.
+SMF formats 0/1 and single-track format 2 with ticks-per-quarter timing
+are supported. There is no file looping or SMPTE timing support.
+Host checks and calibrated-emulator MIDI gates pass with equal aggregate
+DSP/host checksums and no late periods. Live input is gated using recorded
+MIDI bytes, not the physical MIDI port. This is an approximate practical
+OPL2 renderer, not a sample-exact physical-chip model.
+
+PACKAGE
+F030MID.TTP / F030MID.TOS: player (identical binaries).
+README.TXT: these instructions.
+COPYING.TXT: license text; source files retain their original notices.
+SOURCE.TXT: source download and acknowledgements.
+DEMO.MID: generated test score.
+BUILD.TXT: version, source commit and player checksum.
+Source and documentation: github.com/AnimaInCorpore/F030OPL2
