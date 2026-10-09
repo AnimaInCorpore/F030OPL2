@@ -215,6 +215,38 @@ still equals the host's (`a440`, `song`, Falcon 3 `C`, `F`, Ultima 4
 35 frames on each song: `C.MID` 428 to 463, `F.MID` 261 to 296, `song.mid`
 191 to 225, `Combat` 538 to 573.
 
+## From F030SID (2026-10-09): host transport and SSI input
+
+Found in F030SID; details in its `docs/dsp-kernel.md` ("Host transport", "SSI
+receive route") and `docs/performance.md` ("Pacing and the write queue").
+Cycle figures are from the DSP56001 User's Manual (`F030SID/docs/DSP56001_um.pdf`
+and a copy in F030MXDRV), in oscillator clocks; one instruction cycle (Icyc) is
+two clocks.
+
+- **`Dsp_BlkUnpacked` writes blind after its first word** (TOS 4.02). The uses
+  here are safe: the stage-two load into a tight loader loop, and one-word
+  transfers. A multi-word block to a kernel that reads between frames loses words.
+  `Dsp_BlkHandShake` tests the port before every word, three bytes a word.
+- **A host-port word costs the DSP at least 5 Icyc** when it is already waiting:
+  `jclr #0,x:m_hsr,*` 6 clocks per test, `movep x:m_hrx,x:(r)+` 4 clocks.
+  Everything beyond that is waiting for the 68030, which is the `wait_rx`
+  cost found above.
+- **SSI receive from DMA playback.** A two-`movep` fast receive interrupt is
+  8 clocks (4 Icyc), one stereo track 98,340 interrupts a second, 2.5% of the
+  DSP. On an overrun the hardware keeps the older word, sets ROE and uses
+  the exception vector `P:$000E` (manual §11.3.2.3.6). Hatari does the opposite:
+  it keeps the newer word, sets no flag and always raises `P:$000C`. Hatari
+  also loses words in free-running mode whenever a 68030 instruction outlasts
+  a slot. ScummVM's `ssi-dma-c2p` (branch `ssi-dma-c2p-test`) has the working
+  free-running and handshake kernels and `SSIMIX` for sound beside data.
+- **`REP` is not interruptible**, nor are consecutive `REP`s: an SSI interrupt
+  waits for the repeat. A 49,170 Hz frame is 325.4 Icyc; with 8 slots a slot
+  is 40.7 Icyc.
+- **Pass rate matters more than lead for a busy DSP.** On F030SID's heaviest
+  tune, small pushes every 5 ms kept the original's result (4-5 overtakes in
+  120 s), while one push every 40 ms gave 113. The DSP renders nothing while it
+  takes a push at the 68030's pace.
+
 The published-player and earlier development records are indexed in
 [releases and validation](releases.md#validation-records). They remain separate
 from the historical optimization measurements above.

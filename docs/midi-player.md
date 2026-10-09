@@ -240,6 +240,17 @@ if a keyboard is the intended input.
   `-i` with the same code after the byte is read.
 - Successful physical-Falcon playback and timing under a loaded 68030 are not
   established by the recorded gates.
+- **FreeMiNT is untested, and the pacing suggests it will not cooperate.** Each
+  period `submitSuper` runs under `Supexec` and spins on the host port until
+  the DSP answers `REPLY_READY`, and the DSP answers only when it can take the
+  next period. The 68030 therefore spends its idle time spinning in supervisor
+  mode, which MiNT cannot preempt. F030SID's player did the same: under
+  FreeMiNT without memory protection its music played while the system
+  stopped responding, and a busy process beside it kept 0.4% of its speed
+  (F030SID `docs/player.md`, "Under FreeMiNT", Hatari, 2026-10-09). A
+  cooperative version would wait in user mode, test readiness in a short `Supexec`
+  or XBIOS call and sleep in `Fselect`. MiNT rounds `Fselect` up to its 20 ms
+  tick, about 1.3 periods, so it needs more render-ahead than TOS does.
 
 ### Limits
 
