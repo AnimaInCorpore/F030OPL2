@@ -1,0 +1,391 @@
+{
+  "date": "2026-10-10",
+  "release_tag": "v0.2.1",
+  "source_commit": "076214ed1b7c7e392fc8154468d3b51fc78a8f87",
+  "note": "Pre-publication validation of the packaged v0.2.1 player; not yet published. External songs were fetched from bitmidi.com for testing only and are not in the repository; they are identified by SHA-256.",
+  "commands": [
+    "make check",
+    "make midi-gate midi-live-gate",
+    "make package-gate VERSION=v0.2.1",
+    "midi-gate.py <vibrato worst case> --tos release/v0.2.1/F030MID.TTP --ahead on|off",
+    "midi-gate.py <song> --tos release/v0.2.1/F030MID.TTP --ahead on|off (and v0.2.0 against its own host tool)"
+  ],
+  "environment": "DSP-calibrated Hatari (F030Arcade third_party/hatari, commit 639fadf6), TOS 4.02 unless stated, 14 MB ST-RAM",
+  "host_checks": {
+    "practical_failures": 0,
+    "midi_checks": 228,
+    "midi_failures": 0
+  },
+  "packaged_player_sha256": "a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6",
+  "assets_local": [
+    {
+      "name": "F030MID.TOS",
+      "size": 180312,
+      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
+    },
+    {
+      "name": "F030MID.TTP",
+      "size": 180312,
+      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
+    },
+    {
+      "name": "F030OPL2-SOURCE.tar.gz",
+      "size": 197887,
+      "digest": "sha256:7a91d0d7431e1029bc11ae62389f4445fe4fdc50e1ea42956b6d244a72743754"
+    },
+    {
+      "name": "OPL2.ZIP",
+      "size": 212512,
+      "digest": "sha256:4d40f753c80959f6d15cd4187e8cffd6e81b9af4878eeccebd55effdc16e389a"
+    },
+    {
+      "name": "SHA256.TXT",
+      "size": 320,
+      "digest": "sha256:4ec095e96f2cee6fb73602b199b75b65494adeddc6e56c58d6c3c1b0cdd0549c"
+    }
+  ],
+  "midi_gates": [
+    {
+      "result_path": "build/package-gate-on/results.json",
+      "date": "2026-10-10",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "0b226a855dcdefc6c21d5d1811149dea1ff6fe57f7cc3020cf88dbed8b2870a4",
+        "midi/midi-opl.h": "0072bb3f4f7268955354b7b657329c4302ccc1871c08de4fe642b19c9b115a8e",
+        "midi/midi-file.h": "e8ee2a184fdaa2e7ce1a103dc2ff83f1318221dafbe727ea86f06a91ac87e57e",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "DEMO.MID",
+      "tables_match_fixture": true,
+      "render_ahead": "on",
+      "song_seconds": 13.45,
+      "periods_expected": 990,
+      "periods_submitted": 990,
+      "periods_rendered_mod_4096": 990,
+      "late_periods": 0,
+      "note_ons_expected": 138,
+      "note_ons_seen": 138,
+      "parameter_events_expected": 2884,
+      "parameter_events_sent": 2884,
+      "event_overflow": false,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "min_slack_frames": 225,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/package-gate-off/results.json",
+      "date": "2026-10-10",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "0b226a855dcdefc6c21d5d1811149dea1ff6fe57f7cc3020cf88dbed8b2870a4",
+        "midi/midi-opl.h": "0072bb3f4f7268955354b7b657329c4302ccc1871c08de4fe642b19c9b115a8e",
+        "midi/midi-file.h": "e8ee2a184fdaa2e7ce1a103dc2ff83f1318221dafbe727ea86f06a91ac87e57e",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "DEMO.MID",
+      "tables_match_fixture": true,
+      "render_ahead": "off",
+      "song_seconds": 13.45,
+      "periods_expected": 990,
+      "periods_submitted": 990,
+      "periods_rendered_mod_4096": 990,
+      "late_periods": 0,
+      "note_ons_expected": 138,
+      "note_ons_seen": 138,
+      "parameter_events_expected": 2884,
+      "parameter_events_sent": 2884,
+      "event_overflow": false,
+      "checksum_expected": 6797716,
+      "checksum_dsp": 6797716,
+      "checksum_equal": true,
+      "min_slack_frames": 58,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/package-gate-live/results.json",
+      "date": "2026-10-10",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "0b226a855dcdefc6c21d5d1811149dea1ff6fe57f7cc3020cf88dbed8b2870a4",
+        "midi/midi-opl.h": "0072bb3f4f7268955354b7b657329c4302ccc1871c08de4fe642b19c9b115a8e",
+        "midi/midi-file.h": "e8ee2a184fdaa2e7ce1a103dc2ff83f1318221dafbe727ea86f06a91ac87e57e",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "live.bin",
+      "tables_match_fixture": true,
+      "render_ahead": "default",
+      "song_seconds": 1.843,
+      "periods_expected": 247,
+      "periods_submitted": 247,
+      "periods_rendered_mod_4096": 247,
+      "late_periods": 0,
+      "note_ons_expected": 7,
+      "note_ons_seen": 7,
+      "parameter_events_expected": 205,
+      "parameter_events_sent": 205,
+      "event_overflow": false,
+      "checksum_expected": 7781472,
+      "checksum_dsp": 7781472,
+      "checksum_equal": true,
+      "min_slack_frames": 226,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/release-v0.2.1-vibrato-on/results.json",
+      "date": "2026-10-10",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "0b226a855dcdefc6c21d5d1811149dea1ff6fe57f7cc3020cf88dbed8b2870a4",
+        "midi/midi-opl.h": "0072bb3f4f7268955354b7b657329c4302ccc1871c08de4fe642b19c9b115a8e",
+        "midi/midi-file.h": "e8ee2a184fdaa2e7ce1a103dc2ff83f1318221dafbe727ea86f06a91ac87e57e",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "vibrato worst case (generated: nine channels, nine held notes, CC1 = 127, 20 s)",
+      "tables_match_fixture": true,
+      "render_ahead": "on",
+      "song_seconds": 19.99,
+      "periods_expected": 1408,
+      "periods_submitted": 1408,
+      "periods_rendered_mod_4096": 1408,
+      "late_periods": 0,
+      "note_ons_expected": 180,
+      "note_ons_seen": 180,
+      "parameter_events_expected": 50239,
+      "parameter_events_sent": 50239,
+      "event_overflow": false,
+      "checksum_expected": 12721524,
+      "checksum_dsp": 12721524,
+      "checksum_equal": true,
+      "min_slack_frames": 115,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    },
+    {
+      "result_path": "build/release-v0.2.1-vibrato-off/results.json",
+      "date": "2026-10-10",
+      "gate": "F030MID.TOS on the emulated Falcon against the host MIDI engine and reference chip",
+      "source_sha256": {
+        "midi/f030mid.cpp": "0b226a855dcdefc6c21d5d1811149dea1ff6fe57f7cc3020cf88dbed8b2870a4",
+        "midi/midi-opl.h": "0072bb3f4f7268955354b7b657329c4302ccc1871c08de4fe642b19c9b115a8e",
+        "midi/midi-file.h": "e8ee2a184fdaa2e7ce1a103dc2ff83f1318221dafbe727ea86f06a91ac87e57e",
+        "midi/period-stream.h": "c74c78fb5674966f4d5344334ec0bf3bf2d1f56134e38d934677332479ddfec8",
+        "midi/opl-upload.h": "3dce12c05c2c418bae7fc9ae1bb4901a0fde8c8909390c4d8840d24cefbf3b08",
+        "midi/gm-bank.h": "0f281a0bfc4a6afe159a1f8409de5f9ace2e27d4f529aae0d0c245df9f79c8c1",
+        "dsp/oplrt.asm": "50b6a926edbcf2e1b773eba42f19e6f9c0f6d3f544c1b769497f9b6fa089f2ff"
+      },
+      "midi": "vibrato worst case (generated: nine channels, nine held notes, CC1 = 127, 20 s)",
+      "tables_match_fixture": true,
+      "render_ahead": "off",
+      "song_seconds": 19.99,
+      "periods_expected": 1408,
+      "periods_submitted": 1408,
+      "periods_rendered_mod_4096": 1408,
+      "late_periods": 0,
+      "note_ons_expected": 180,
+      "note_ons_seen": 180,
+      "parameter_events_expected": 50239,
+      "parameter_events_sent": 50239,
+      "event_overflow": false,
+      "checksum_expected": 12721524,
+      "checksum_dsp": 12721524,
+      "checksum_equal": true,
+      "min_slack_frames": 55,
+      "not_established": [
+        "No audio captured or auditioned from the emulator; a checksum match does not prove individual words",
+        "No hardware run"
+      ]
+    }
+  ],
+  "control_c": {
+    "method": "RUNTWICE.TOS Pexecs the player twice; Ctrl-C injected through Hatari's command FIFO during the first run; packaged v0.2.1 player",
+    "keyed_during_playback": {
+      "EmuTOS 512k (etos512de.img)": "first 0, second 0, plays whole song",
+      "TOS 4.02": "first 0, second 0, plays whole song"
+    },
+    "at_diag_pause_with_DSP_locked": {
+      "EmuTOS 512k (etos512de.img)": "first -32 (GEMDOS Ctrl-C), second 0, plays whole song",
+      "TOS 4.02": "first -32, second 0, plays whole song"
+    },
+    "v0.2.0_for_comparison_EmuTOS": "first -32, second 1: 'the DSP is in use by another program' (both cases)"
+  },
+  "startup_cycles_to_first_period": {
+    "SMOKE": {
+      "v0.2.0_cycles": 164856238,
+      "v0.2.1_cycles": 5268574
+    },
+    "CHARIOTS": {
+      "v0.2.0_cycles": 65856916,
+      "v0.2.1_cycles": 4859388
+    },
+    "dense synthetic, 16 tracks, 180 s": {
+      "v0.2.0_cycles": 601135751,
+      "v0.2.1_cycles": 5300435
+    }
+  },
+  "external_songs": [
+    {
+      "song": "Santana, Smooth (14 tracks; 465 CC1, maracas and guiro keys 70/73/74)",
+      "file_sha256": "12be99028c677564e80c7ea32acf8660cec0dcc7ca6160bdc4f9ab1648d19b44",
+      "v0.2.0_ahead_on": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 150426,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 305
+      },
+      "v0.2.0_ahead_off": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 150426,
+        "checksum_equal": true,
+        "late_periods": 17,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_on": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 168537,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 432
+      },
+      "v0.2.1_ahead_off": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 168537,
+        "checksum_equal": true,
+        "late_periods": 16,
+        "min_slack_frames": 0
+      }
+    },
+    {
+      "song": "Conga (29 tracks; 150 channel pressure, maracas key 70)",
+      "file_sha256": "0860b468a0b4a8f4a9195abad59e867b1616b012029a4033fdc87fe62a495a03",
+      "v0.2.0_ahead_on": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 252097,
+        "checksum_equal": true,
+        "late_periods": 7,
+        "min_slack_frames": 0
+      },
+      "v0.2.0_ahead_off": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 252097,
+        "checksum_equal": true,
+        "late_periods": 240,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_on": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 281026,
+        "checksum_equal": true,
+        "late_periods": 6,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_off": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 281026,
+        "checksum_equal": true,
+        "late_periods": 203,
+        "min_slack_frames": 0
+      }
+    },
+    {
+      "song": "Smoke on the Water (24 tracks; GS NRPN edits, CC1)",
+      "file_sha256": "776477f055036ce8c65c89bf51d86062c6c2bdc47f4c9bc2d81fe744096ab269",
+      "v0.2.0_ahead_on": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 282407,
+        "checksum_equal": true,
+        "late_periods": 15,
+        "min_slack_frames": 0
+      },
+      "v0.2.0_ahead_off": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 282407,
+        "checksum_equal": true,
+        "late_periods": 355,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_on": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 335068,
+        "checksum_equal": true,
+        "late_periods": 11,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_off": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 335068,
+        "checksum_equal": true,
+        "late_periods": 344,
+        "min_slack_frames": 0
+      }
+    },
+    {
+      "song": "Chariots of Fire (11 tracks; GS NRPN edits after RPN 0)",
+      "file_sha256": "136ef16b25ed99eea75ed3d7deee82d90992f52e907ffc110e06d46bf747b86d",
+      "v0.2.0_ahead_on": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 125040,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 57
+      },
+      "v0.2.0_ahead_off": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 125040,
+        "checksum_equal": true,
+        "late_periods": 65,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_on": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 125010,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 131
+      },
+      "v0.2.1_ahead_off": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 125010,
+        "checksum_equal": true,
+        "late_periods": 55,
+        "min_slack_frames": 0
+      }
+    }
+  ],
+  "findings": [
+    "Late periods on the external songs are not new: v0.2.0 has as many or more on each, in both modes.",
+    "Chariots of Fire: v0.2.0 applied GS NRPN data entry to RPN 0, leaving nine channels at a 24-semitone bend range; channel 4 bends at 96-111 s."
+  ],
+  "not_established": [
+    "No audio auditioned, from the emulator or the host renders",
+    "No hardware run",
+    "Fine and coarse tuning (RPN 1/2) are covered by host unit checks only: no song at hand uses them",
+    "The terminate vector under FreeMiNT was not exercised",
+    "Physical MIDI port input"
+  ]
+}

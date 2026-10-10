@@ -176,8 +176,10 @@ allocator, pitch calculation, reader and player are included here.
 
 ## Verification
 
-The published `v0.2.0` player passed host checks and packaged-player gates on
-2026-10-10 (`v0.1.0` on 2026-10-08): the demo in both render-ahead modes and raw live input with it off.
+The `v0.2.1` player (validated 2026-10-10, before publication) passed the same
+gates plus a vibrato worst case, Control-C under EmuTOS and TOS 4.02, and four
+external songs compared with `v0.2.0`. The published `v0.2.0` player passed host
+checks and packaged-player gates on 2026-10-10 (`v0.1.0` on 2026-10-08): the demo in both render-ahead modes and raw live input with it off.
 Uploaded tables and DSP/host checksums matched, with no event overflow or late
 period. See [validation records](releases.md#validation-records) for source
 commits, exact results, earlier development checks and test limitations.

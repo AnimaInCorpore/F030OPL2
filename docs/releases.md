@@ -13,20 +13,35 @@ and the source commit. The two player files are
 identical; the `.TTP` extension lets the TOS desktop ask for parameters.
 Commercial songs, toolchain binaries and ROMs are not included.
 
+`v0.2.1` is packaged from source commit `076214e` and validated, not yet
+published. Its player starts a file at once instead of first reading the whole
+file (Smoke on the Water: about 10.3 s of silence before, 0.33 s now); reads
+Control-C as a key under plain TOS and releases the DSP and the sound system
+through the terminate vector however else it ends; plays the GM drum keys the
+bank lacks by stand-ins; follows RPN 1 and 2 tuning; stops applying NRPN data
+entry to the last RPN (which gave Chariots of Fire a 24-semitone bend range);
+and turns the modulation wheel into a software vibrato. The MIDI engine and
+reader changed with it; the DSP kernel, decoder and transport did not.
+
 ## Validation records
 
 | Record | Source and scope |
 | --- | --- |
 | [validation.json](validation.json) | Initial 2026-10-05 baseline, before later stream optimizations; historical measurements are preserved. |
 | [current-validation.json](current-validation.json) | Development snapshot of `8961ed6` on 2026-10-08: host checks, five DSP bench cases, one-second stress/rhythm streams in both modes, and MIDI file/raw-live gates. The filename is retained for existing links; this is not the latest packaged release record. |
+| [release-validation-v0.2.1.json](release-validation-v0.2.1.json) | `v0.2.1` at `076214e`, validated on 2026-10-10 before publication: packaged player, demo in both modes, raw-live input, a vibrato worst case in both modes, Control-C under EmuTOS and TOS 4.02, startup time, and four external songs in both modes against `v0.2.0` on the same files. |
 | [release-validation-v0.2.0.json](release-validation-v0.2.0.json) | Published `v0.2.0` at `1171559`, validated on 2026-10-10: packaged player, generated demo in both render-ahead modes, raw-live input, host checks, uploaded-asset digests, and FreeMiNT measurements on the identical binary. Tester reports are listed separately from validation. |
 | [release-validation.json](release-validation.json) | Published `v0.1.0` at `9dd60bd`, validated on 2026-10-08: packaged player, generated demo in both render-ahead modes, raw-live input, host checks and uploaded-asset digests. |
 | [speed-quality.md](speed-quality.md) and [midi-player.md](midi-player.md#verification) | Dated optimization baselines and external-song corpus results, retained separately from publication tests. |
 
-Both releases' demo rendered 990 periods with checksum 6,797,716 in each mode.
+All three releases' demo rendered 990 periods with checksum 6,797,716 in each mode.
 Raw live input rendered 247 periods with checksum 7,781,472. Every uploaded
 table matched the fixture, no event overflow occurred and no period was late.
-All 158 MIDI host checks passed; practical-model host checks had zero failures.
+All MIDI host checks passed (158 for `v0.1.0` and `v0.2.0`, 228 for `v0.2.1`);
+practical-model host checks had zero failures. On four external songs (not
+shipped), `v0.2.1` had as many late periods as `v0.2.0` or fewer in each
+mode: with render-ahead on, none for Smooth and Chariots of Fire, 6 (before 7)
+for Conga and 11 (before 15) for Smoke on the Water.
 
 DSP benches compare individual frame words. Stream and MIDI gates compare
 aggregate checksums, upload images and counters; checksum equality alone is
