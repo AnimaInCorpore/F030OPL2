@@ -9,6 +9,7 @@ import re
 import subprocess
 import tarfile
 import textwrap
+import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', required=True, help='release tag, for example v0.1.0')
+    parser.add_argument('--version', required=True, help='release tag, for example v0.2.0')
     args = parser.parse_args()
     if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?', args.version):
         parser.error('version must be a v-prefixed semantic version')
@@ -64,10 +65,14 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     for name, data in files.items():
         (output / name).write_bytes(data)
+    # Every entry carries the source commit's time (UTC): the archive stays
+    # reproducible, and the files do not show up dated 1980 on the Falcon.
+    epoch = int(subprocess.check_output(['git', 'show', '-s', '--format=%ct', commit], cwd=ROOT))
+    stamp = time.gmtime(epoch)[:6]
     archive = output / 'OPL2.ZIP'
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as z:
         for name, data in files.items():
-            entry = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            entry = zipfile.ZipInfo(name, date_time=stamp)
             entry.compress_type = zipfile.ZIP_DEFLATED
             entry.external_attr = 0o100644 << 16
             z.writestr(entry, data)
@@ -80,7 +85,6 @@ def main():
     prefix = 'F030OPL2-SOURCE/'
     data = subprocess.check_output(['git', 'archive', '--format=tar',
                                    '--prefix=' + prefix, commit], cwd=ROOT)
-    epoch = int(subprocess.check_output(['git', 'show', '-s', '--format=%ct', commit], cwd=ROOT))
     with source.open('wb') as raw:
         with gzip.GzipFile(fileobj=raw, filename='', mode='wb', mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode='w|') as merged:

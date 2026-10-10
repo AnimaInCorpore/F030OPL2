@@ -4,8 +4,9 @@ REQUIREMENTS
 Atari Falcon030 with DSP56001 and TOS sound/DSP services.
 The emulator gates use TOS 4.02 and 14 MB ST-RAM; other memory sizes and
 TOS versions have not been qualified. No FPU is required.
-Physical Falcon playback, actual MIDI IN and audio quality are unverified.
-This preview is intended for hardware testing.
+Not formally validated on hardware. Testers report the demo and live
+MIDI IN (-l) working on a standard Falcon under TOS, and file playback
+under EmuTOS 1.4 in Hatari. This preview is intended for hardware testing.
 
 INSTALL
 Extract OPL2.ZIP on your computer. Transfer F030MID.TTP, DEMO.MID and your .MID
@@ -45,6 +46,13 @@ DESKTOP WITHOUT PARAMETERS
 F030MID.TOS is the same executable under a different extension. Place it
 with a file named SONG.MID and double-click it. MIDIIN.RAW, if present,
 takes precedence; with neither input file it falls back to live MIDI IN. F030MID.TTP is recommended for selecting a song or mode.
+
+FREEMINT
+The player runs under FreeMiNT. It locks the DSP and the sound system,
+and Ctrl-C (SIGINT) or SIGTERM stops it cleanly like a key. It plays
+well on an otherwise idle system. A busy program beside it causes
+dropouts: the DSP buffers only about 31 ms of audio, less than one MiNT
+time slice. Tested in an emulator only, with memory protection off.
 
 LIMITS AND VALIDATION
 Nine simultaneous voices, mono OPL2 synthesis sent to stereo audio.
