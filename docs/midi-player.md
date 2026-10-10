@@ -158,8 +158,8 @@ allocator, pitch calculation, reader and player are included here.
 
 ## Verification
 
-The published `v0.1.0` player passed host checks and packaged-player gates on
-2026-10-08: the demo in both render-ahead modes and raw live input with it off.
+The published `v0.2.0` player passed host checks and packaged-player gates on
+2026-10-10 (`v0.1.0` on 2026-10-08): the demo in both render-ahead modes and raw live input with it off.
 Uploaded tables and DSP/host checksums matched, with no event overflow or late
 period. See [validation records](releases.md#validation-records) for source
 commits, exact results, earlier development checks and test limitations.

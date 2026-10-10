@@ -1,7 +1,11 @@
 # Releases, gate environment and validation
 
-[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.1.0)
-currently provides the `v0.1.0` prerelease from source commit `9dd60bd`. Assets
+[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.0)
+currently provides the `v0.2.0` prerelease from source commit `1171559`; the
+`v0.1.0` prerelease from `9dd60bd` stays published unchanged. `v0.2.0` adds the
+FreeMiNT DSP lock and clean stop on signals, dates the ZIP entries by the
+source commit instead of 1980-01-01, and adds a FreeMiNT section to the
+instructions. Assets
 are `OPL2.ZIP`, `F030MID.TTP`, `F030MID.TOS`, `F030OPL2-SOURCE.tar.gz` and
 `SHA256.TXT`. The ZIP uses flat uppercase 8.3 filenames and includes
 a generated `DEMO.MID`, 40-column instructions, license text, source notices
@@ -15,10 +19,11 @@ Commercial songs, toolchain binaries and ROMs are not included.
 | --- | --- |
 | [validation.json](validation.json) | Initial 2026-10-05 baseline, before later stream optimizations; historical measurements are preserved. |
 | [current-validation.json](current-validation.json) | Development snapshot of `8961ed6` on 2026-10-08: host checks, five DSP bench cases, one-second stress/rhythm streams in both modes, and MIDI file/raw-live gates. The filename is retained for existing links; this is not the latest packaged release record. |
+| [release-validation-v0.2.0.json](release-validation-v0.2.0.json) | Published `v0.2.0` at `1171559`, validated on 2026-10-10: packaged player, generated demo in both render-ahead modes, raw-live input, host checks, uploaded-asset digests, and FreeMiNT measurements on the identical binary. Tester reports are listed separately from validation. |
 | [release-validation.json](release-validation.json) | Published `v0.1.0` at `9dd60bd`, validated on 2026-10-08: packaged player, generated demo in both render-ahead modes, raw-live input, host checks and uploaded-asset digests. |
 | [speed-quality.md](speed-quality.md) and [midi-player.md](midi-player.md#verification) | Dated optimization baselines and external-song corpus results, retained separately from publication tests. |
 
-The release demo rendered 990 periods with checksum 6,797,716 in each mode.
+Both releases' demo rendered 990 periods with checksum 6,797,716 in each mode.
 Raw live input rendered 247 periods with checksum 7,781,472. Every uploaded
 table matched the fixture, no event overflow occurred and no period was late.
 All 158 MIDI host checks passed; practical-model host checks had zero failures.
@@ -29,9 +34,11 @@ not proof of every individual sample. The practical integer host reference
 is approximate and distinct from the original Nuked-OPL3 comparison reference.
 
 The source hashes in the development and release snapshots identify the
-implementation tested. Documentation and release packaging changed between
-those commits, while the synthesis, MIDI engine and transport sources remained
-the same. Historical JSON measurements have not been rewritten as new runs.
+implementation tested. Between the `8961ed6` snapshot and `v0.1.0` only
+documentation and release packaging changed. `v0.2.0` changes the player
+program (`f030mid.cpp`: DSP lock, signals, `Pdomain`); the synthesis, MIDI
+engine, DSP kernel and transport sources are the same, and so are its gate
+counters and checksums. Historical JSON measurements have not been rewritten as new runs.
 
 Release verification used TOS 4.02 and 14 MB emulated ST-RAM. Minimum hardware
 RAM, other TOS versions, physical MIDI input, loaded-host timing and audio

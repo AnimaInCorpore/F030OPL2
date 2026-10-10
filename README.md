@@ -22,15 +22,17 @@ physical-Falcon playback and actual MIDI-port input remain unestablished.
 
 ## Download for a Falcon
 
-Download [OPL2.ZIP](https://github.com/AnimaInCorpore/F030OPL2/releases/download/v0.1.0/OPL2.ZIP)
+Download [OPL2.ZIP](https://github.com/AnimaInCorpore/F030OPL2/releases/download/v0.2.0/OPL2.ZIP)
 from [GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases).
 Extract it and transfer `F030MID.TTP` and `DEMO.MID` to the Falcon.
 Double-click the player and enter `DEMO.MID`, your own `.mid` filename, or `-l`
 for live MIDI IN synthesis.
 The ZIP includes a `.TOS` copy, 40-column instructions, source notices and build identity;
 the player files are also available as separate downloads. No compilation or
-separate DSP image is needed on the Falcon. The initial release is a prerelease
-for hardware testing; physical playback and MIDI-port input remain unverified.
+separate DSP image is needed on the Falcon. `v0.2.0` is a prerelease for
+hardware testing; physical playback and MIDI-port input are not formally
+verified, though testers report both working on a Falcon under TOS. Under
+FreeMiNT it plays on an idle system and drops out beside busy programs.
 
 ## Build and verify
 
@@ -142,18 +144,18 @@ optimizations, the profiling method and the ranked list of what is left, and
 [the MIDI player](docs/midi-player.md) for the player, its decisions and its
 verification.
 
-The published `v0.1.0` player passed its packaged demo in both render-ahead
+The published `v0.2.0` player passed its packaged demo in both render-ahead
 modes and raw live-input gates. See [validation records](docs/releases.md#validation-records)
 for the tested commits, earlier baselines and limits.
 
-To reproduce the published package, use a clean checkout of tag `v0.1.0`
+To reproduce the published package, use a clean checkout of tag `v0.2.0`
 with the build dependencies configured:
 
 ```sh
-git switch --detach v0.1.0
-make midi-release VERSION=v0.1.0
+git switch --detach v0.2.0
+make midi-release VERSION=v0.2.0
 ```
 
-This creates `release/v0.1.0/OPL2.ZIP`, direct player downloads, the matching
+This creates `release/v0.2.0/OPL2.ZIP`, direct player downloads, the matching
 `F030OPL2-SOURCE.tar.gz` archive and `SHA256.TXT`. Run
-`make package-gate VERSION=v0.1.0` to test the packaged demo and player. See [release packaging](docs/releases.md) for validation and publishing.
+`make package-gate VERSION=v0.2.0` to test the packaged demo and player. See [release packaging](docs/releases.md) for validation and publishing.
