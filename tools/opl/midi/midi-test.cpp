@@ -1,6 +1,7 @@
 // Unit checks of the MIDI engine, the Standard MIDI File reader and the live
 // byte-stream parser. Prints one JSON line; exits nonzero on any failure.
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 #include "midi-file.h"
@@ -46,6 +47,12 @@ struct Recorder : RegisterSink {
 		return n;
 	}
 };
+
+// f-number and block of voice v as last written, as one comparable pitch
+long voicePitch(const Recorder &r, int v) {
+	const long fnum = r.last((uint16_t)(0xa0 + v)) | ((r.last((uint16_t)(0xb0 + v)) & 3) << 8);
+	return fnum << ((r.last((uint16_t)(0xb0 + v)) >> 2) & 7);
+}
 
 void testPitch() {
 	Recorder r;
@@ -143,12 +150,92 @@ void testControllers() {
 	e.send(0xe0, 0x00, 0x40);           // 8192: centre
 	CHECK_EQ(r.last(0xa0) | ((r.last(0xb0) & 3) << 8), centre);
 
+	// an NRPN's data entry does not reach the RPN selected before it
+	e.reset(&r, 0);
+	e.send(0xb0, 101, 0);
+	e.send(0xb0, 100, 0);               // RPN 0: bend range
+	e.send(0xb0, 6, 12);
+	e.send(0xb0, 99, 1);
+	e.send(0xb0, 98, 8);                // NRPN 1/8 (a GS vibrato rate)
+	e.send(0xb0, 6, 100);
+	e.send(0x90, 57, 100);
+	e.send(0xe0, 0x7f, 0x7f);           // full bend: twelve semitones (less one step), not 24
+	const long bent = voicePitch(r, 0);
+	e.send(0xe0, 0x00, 0x40);
+	e.send(0x90, 69, 100);              // the note an octave up, unbent, on voice 1
+	CHECK(std::labs(bent - voicePitch(r, 1)) * 100 < voicePitch(r, 1));
+
 	// all notes off
 	e.reset(&r, 0);
 	e.send(0x90, 60, 100);
 	e.send(0x90, 64, 100);
 	e.send(0xb0, 123, 0);
 	CHECK_EQ(e.sounding(), 0);
+}
+
+void testTuning() {
+	Recorder r;
+	Engine e;
+	e.reset(&r, 0);
+	e.send(0x90, 69, 100);
+	const long inTune = voicePitch(r, 0);
+	// RPN 2: coarse tuning a semitone up sounds the note above, on the note already held
+	e.send(0xb0, 101, 0);
+	e.send(0xb0, 100, 2);
+	e.send(0xb0, 6, 65);
+	const long coarse = voicePitch(r, 0);
+	e.send(0xb0, 6, 64);
+	CHECK_EQ(voicePitch(r, 0), inTune);
+	{
+		Recorder q;
+		Engine f;
+		f.reset(&q, 0);
+		f.send(0x90, 70, 100);
+		CHECK_EQ(coarse, voicePitch(q, 0));
+	}
+	// RPN 1: fine tuning, its MSB and then its LSB; 8,192 is in tune
+	e.send(0xb0, 100, 1);
+	e.send(0xb0, 6, 96);                // +50 cents
+	const long fineUp = voicePitch(r, 0);
+	CHECK(fineUp > inTune && fineUp < coarse);
+	e.send(0xb0, 38, 127);              // the LSB raises it a little more
+	CHECK(voicePitch(r, 0) >= fineUp);
+	e.send(0xb0, 6, 32);                // -50 cents
+	CHECK(voicePitch(r, 0) < inTune);
+	e.send(0xb0, 6, 64);
+	e.send(0xb0, 38, 0);
+	CHECK_EQ(voicePitch(r, 0), inTune);
+}
+
+void testVibrato() {
+	Recorder r;
+	Engine e;
+	e.reset(&r, 0);
+	e.send(0x90, 69, 100);
+	const long centre = voicePitch(r, 0);
+	// no modulation: the ticks leave the pitch alone
+	const size_t quiet = r.log.size();
+	e.advanceTo(49170);                 // a second
+	CHECK_EQ(r.log.size(), quiet);
+	// full modulation: the pitch swings both ways, about half a semitone
+	e.send(0xb0, 1, 127);
+	long lowest = centre, highest = centre;
+	for (uint64_t f = 49170; f < 2 * 49170; f += 197) {
+		e.advanceTo(f);
+		const long p = voicePitch(r, 0);
+		lowest = p < lowest ? p : lowest;
+		highest = p > highest ? p : highest;
+	}
+	CHECK(highest > centre && lowest < centre);
+	CHECK(highest * 1000 < centre * 1035 && lowest * 1000 > centre * 965);   // within about 60 cents
+	CHECK(r.last(0xb0) & 0x20);         // the key stays down throughout
+	// the wheel back to zero: the next tick returns the note to its pitch, then nothing more
+	e.send(0xb0, 1, 0);
+	e.advanceTo(2 * 49170 + 400);
+	CHECK_EQ(voicePitch(r, 0), centre);
+	const size_t settled = r.log.size();
+	e.advanceTo(3 * 49170);
+	CHECK_EQ(r.log.size(), settled);
 }
 
 void testPercussion() {
@@ -162,6 +249,29 @@ void testPercussion() {
 	const int before = r.count(0xb0);
 	e.send(0x99, 20, 110);              // an unmapped key: ignored
 	CHECK_EQ(r.count(0xb0), before);
+	e.send(0x99, 71, 110);              // a whistle: no drum stands in for it
+	CHECK_EQ(r.count(0xb0), before);
+	// ride cymbal 2, which the bank lacks, is played as ride cymbal 1
+	{
+		Recorder a, b;
+		Engine x, y;
+		x.reset(&a, 0);
+		y.reset(&b, 0);
+		x.send(0x99, 59, 100);
+		y.send(0x99, 51, 100);
+		CHECK_EQ(x.sounding(), 1);
+		CHECK_EQ(voicePitch(a, 0), voicePitch(b, 0));
+		CHECK_EQ(a.last(0xc0), b.last(0xc0));
+		x.send(0x89, 59, 0);            // and its key-off finds it
+		CHECK(!(a.last(0xb0) & 0x20));
+	}
+	// every General MIDI drum key but the two whistles sounds
+	for (int key = 35; key <= 81; ++key) {
+		Engine z;
+		z.reset(0, 0);
+		z.send(0x99, (uint8_t)key, 100);
+		CHECK(z.sounding() == (key == 71 || key == 72 ? 0 : 1));
+	}
 	// the patch's duration ends the note by itself (19 ticks for the bass drum)
 	e.advanceTo(40 * 197);
 	CHECK_EQ(e.sounding(), 0);
@@ -266,6 +376,13 @@ void testSmf() {
 		++n;
 	}
 	CHECK_EQ(n, 4);
+
+	// a player loaded again starts its clock again
+	CHECK(p.load(file.data(), (uint32_t)file.size()));
+	CHECK(p.next(&m));
+	CHECK_EQ(m.frame, 0);
+	CHECK(p.next(&m));
+	CHECK_EQ(m.frame, 24584);
 }
 
 void testStream() {
@@ -316,6 +433,8 @@ int main() {
 	testPitch();
 	testVoices();
 	testControllers();
+	testTuning();
+	testVibrato();
 	testPercussion();
 	testClock();
 	testSmf();

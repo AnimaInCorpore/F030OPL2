@@ -19,8 +19,13 @@ F030MID.TTP [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
 ```
 
 - With a file it plays the file plus about two seconds of release tail, then
-  returns to the desktop. A key requests an early stop; the file path checks
-  the keyboard every 64 periods (about one second).
+  returns to the desktop. Playback starts as soon as the DSP is set up: the
+  song's length is found while it plays, not by reading the whole file first,
+  which kept long, dense files silent for many seconds. A key requests an early
+  stop; the file path checks the keyboard every 64 periods (about one second).
+  Control-C is read as an ordinary key. If the program is ended some other way
+  under plain TOS, its terminate vector still stops the stream and releases the
+  DSP and the sound system, so the next start does not find the DSP locked.
 - With no filename or live-mode argument, startup checks `MIDIIN.RAW` first,
   then `SONG.MID`, then falls back to physical MIDI IN if neither is available.
   `DEMO.MID` is not selected automatically; enter its name in the parameter box.
@@ -105,8 +110,10 @@ MIDI IN / .MID --> engine (midi-opl.h) --OPL register writes--> decoder
 ```
 
 - **`midi-opl.h`**: channel state (program, volume, expression, bend and its
-  range through RPN 0, modulation, sustain pedal), nine voices, the General MIDI
-  instrument bank. Everything it does is a sequence of OPL2 register writes
+  range through RPN 0, fine and coarse tuning through RPN 1 and 2, the
+  modulation wheel's vibrato, sustain pedal), nine voices, the General MIDI
+  instrument bank. Selecting an NRPN (CC98/99) deselects the RPN, so the data
+  entry that follows changes nothing here. Everything it does is a sequence of OPL2 register writes
   stamped with a codec-rate frame. Integer arithmetic only; no heap.
 - **`midi-file.h`**: Standard MIDI Files (format 0 and 1, and format 2 of a
   single track, ticks per quarter note; a `MIDI` wrapper as in `.GMD` files is
@@ -140,6 +147,17 @@ binary requires no FPU: it uses soft-float 68030 code linked against the
 - **Percussion is melodic.** Channel 10 plays the bank's 39 percussion patches as
   ordinary two-operator voices, each ended by its own duration, not the chip's
   rhythm mode. All nine voices stay available to the music.
+- **Drum keys the bank lacks have stand-ins.** Ride cymbal 2 (59) plays as ride
+  cymbal 1, vibraslap (58), maracas (70) and the guiros (73, 74) as the cabasa,
+  and the cuicas (78, 79) as the high congas. The whistles (71, 72) stay
+  silent, and so do keys outside 35-81, except 85, which the bank maps.
+- **The modulation wheel is a software vibrato.** Most of the bank's patches
+  already set the chip's own vibrato bit, a fixed 6.1 Hz wobble at the shallow
+  depth, so switching that bit, as the player once did, changed nothing on
+  them. Instead each sounding note's pitch follows a 5.5 Hz triangle, updated
+  every fourth tick of the engine (62.5 Hz), whose depth is the wheel's position times half a
+  semitone (General MIDI 2's default modulation depth range). Only the pitch
+  registers that change are written.
 - **Voice stealing**: a never-used voice, else the one released longest ago, else
   the oldest sounding note. Re-striking a held note re-triggers its own voice.
 - **Levels** follow the instrument bank: velocity raises the instrument's own levels
@@ -167,9 +185,9 @@ commits, exact results, earlier development checks and test limitations.
 The following tables retain the earlier measurements for comparison.
 
 `make check` runs the engine, file and stream-parser checks (`midi-test.cpp`:
-pitch, voice allocation and stealing, the pedal, volume, bend, percussion
-durations, tick-to-frame exactness, running status, damaged and unsupported
-files).
+pitch, voice allocation and stealing, the pedal, volume, bend, tuning, NRPN
+data entry, the vibrato, percussion stand-ins and durations, tick-to-frame
+exactness, running status, damaged and unsupported files).
 
 `make midi-gate` and `make midi-live-gate` (`midi-gate.py`, under the
 DSP-calibrated Hatari) play a song and a live byte stream through `F030MID.TOS`
@@ -276,11 +294,14 @@ if a keyboard is the intended input.
 
 ### Limits
 
-Nine voices, mono (the OPL2 has no panning). Not implemented: aftertouch, fine
-tuning, SMPTE-timed files, format 2 files of several tracks, file looping (an XMIDI
-song's loops are not unrolled either), and the chip's rhythm mode. The modulation
-wheel switches vibrato on at values of 32 or greater. Percussion keys outside
-GM's 35-81 are ignored.
+Nine voices, mono (the OPL2 has no panning). Not implemented: SMPTE-timed files,
+format 2 files of several tracks, file looping (an XMIDI song's loops are not
+unrolled either), master tuning by system exclusive, the modulation depth range
+(RPN 5), and the chip's rhythm mode. Key and channel pressure (aftertouch) are
+read and ignored: General MIDI leaves their effect to the instrument, and
+General MIDI 2 gives them no effect by default. Percussion shares the nine voices with the
+music. The whistles (keys 71 and 72) and keys outside 35-81 other than 85 are
+ignored.
 
 The player writes integration counters to `RESULT.BIN` in its working directory
 when it exits. This file is used by the gates; it is not an audio recording.

@@ -68,6 +68,7 @@ public:
 		tempo_ = 500000;      // 120 beats a minute until the file says otherwise
 		lastTick_ = 0;
 		numerator_ = 0;
+		frame_ = 0;
 		return tracks_ > 0;
 	}
 
@@ -129,6 +130,8 @@ private:
 	// a quarter note, 25,175,000 / 512 frames a second. The numerator is kept
 	// whole; the frame is its floor.
 	void advanceClock(uint64_t tick) {
+		if (tick == lastTick_)   // most events share a tick with the one before: no 64-bit division
+			return;
 		numerator_ += (tick - lastTick_) * (uint64_t)tempo_ * 1007ull;
 		lastTick_ = tick;
 		frame_ = numerator_ / ((uint64_t)division_ * 20480ull);

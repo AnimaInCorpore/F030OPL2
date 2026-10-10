@@ -29,7 +29,10 @@
 // each stage, so the screen shows how far the program got.
 //
 // Under FreeMiNT it locks the DSP and the sound system, and SIGINT, SIGTERM,
-// SIGQUIT and SIGHUP stop the song like a key, so both are handed back. Each
+// SIGQUIT and SIGHUP stop the song like a key, so both are handed back. Under
+// plain TOS, Control-C is read as a key like any other (the BIOS, not GEMDOS,
+// reads the keyboard), and whatever else ends the program hands both back
+// through the terminate vector. Each
 // period's exchange still waits for READY inside one Supexec, which MiNT cannot
 // preempt: with only two periods of audio buffered on the DSP, a wait that MiNT
 // can preempt loses to any busy process beside it (docs/midi-player.md).
@@ -112,6 +115,15 @@ inline uint32_t portExchange(uint32_t word) {
 volatile sig_atomic_t g_stop = 0;
 void onSignal(int) {
 	g_stop = 1;
+}
+
+// A key at the console, read through the BIOS: GEMDOS's console calls would
+// end the program on Control-C before it could hand anything back.
+bool keyPressed() {
+	if (!Bconstat(2))
+		return false;
+	Bconin(2);
+	return true;
 }
 
 // ---- -d: say what the machine looks like and stop at each stage
@@ -298,6 +310,8 @@ void putWord(FILE *f, uint32_t v) {
 
 // The DSP and the sound system go back to the next program however we leave.
 bool g_dsp_held = false;
+bool g_sound_held = false;
+bool g_streaming = false;
 
 bool bootDsp() {
 	if (Dsp_Lock() != 0) {
@@ -336,6 +350,7 @@ bool startAudio() {
 		printf("the sound system is locked\n");
 		return false;
 	}
+	g_sound_held = true;
 	stage("locked, before Buffoper..Setmontracks");
 	Buffoper(0);
 	Sndstatus(1);
@@ -349,14 +364,41 @@ bool startAudio() {
 	Devconnect(1, 8, 0, 1, 1);
 	stage("connected, before the stream starts");
 	command(CMD_STREAM_START);
+	g_streaming = true;
 	note("stream started");
 	return true;
 }
 
 void stopAudio() {
-	command(CMD_STREAM_STOP);
-	Unlocksnd();
+	if (g_streaming)
+		command(CMD_STREAM_STOP);
+	g_streaming = false;
+	if (g_sound_held)
+		Unlocksnd();
+	g_sound_held = false;
 	releaseDsp();
+}
+
+// GEMDOS calls the terminate vector as any process ends: after main's own
+// cleanup it finds nothing left; after Control-C in a GEMDOS console call, or
+// any other end, it finds the stream, the sound system and the DSP still held.
+// TOS calls it in supervisor mode; the stop goes through Supexec all the same,
+// which works from either mode. The vector goes back to what it was, and that
+// is called in turn.
+typedef void (*TerminateVector)();
+TerminateVector g_old_terminate;
+
+void onTerminate() {
+	if (g_streaming && !g_port_failed)
+		command(CMD_STREAM_STOP);
+	g_streaming = false;
+	if (g_sound_held)
+		Unlocksnd();
+	g_sound_held = false;
+	releaseDsp();
+	Setexc(0x102, (long)g_old_terminate);
+	if (g_old_terminate)
+		g_old_terminate();
 }
 
 uint8_t *loadFile(const char *path, uint32_t *size) {
@@ -404,6 +446,7 @@ int main(int argc, char **argv) {
 	int ahead = -1;            // -1: the default for the mode; 0 or 1: asked for
 	const char *rawFile = 0;
 	Pdomain(1);                // MiNT semantics (EINVFN under TOS)
+	g_old_terminate = (TerminateVector)Setexc(0x102, (long)onTerminate);
 	signal(SIGINT, onSignal);
 	signal(SIGTERM, onSignal);
 	signal(SIGQUIT, onSignal);
@@ -503,17 +546,26 @@ int main(int argc, char **argv) {
 	g_pipeline.begin(0);
 
 	if (!live) {
-		const uint64_t songFrames = smf.totalFrames();
-		const uint32_t periods = (uint32_t)((songFrames + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
+		// The song's length is known once its last message is read, while it
+		// plays: a pass over the whole file before the first period would keep
+		// a long, dense one silent for seconds. The last message sounds in the
+		// period that reads it, so the count is set before the loop reaches it.
+		uint32_t periods = 0xffffffffu;
+		uint64_t lastFrame = 0;
 		Message m;
 		bool have = smf.next(&m);
+		if (!have)
+			periods = (uint32_t)((kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
 		for (uint32_t p = 0; p < periods && !g_port_failed && !g_stop; ++p) {
 			const uint64_t start = (uint64_t)p * kPeriodFrames, end = start + kPeriodFrames;
 			while (have && m.frame < end) {
 				if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
 					totals.note_ons++;
+				lastFrame = m.frame;
 				g_pipeline.message(m);
 				have = smf.next(&m);
+				if (!have)
+					periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
 			}
 			const unsigned n = g_pipeline.takePeriod(start, g_wire);
 			if (!submit(n, totals))
@@ -522,10 +574,8 @@ int main(int argc, char **argv) {
 				printf("period %lu\n", (unsigned long)p);
 				fflush(stdout);
 			}
-			if ((p & 63) == 0 && Cconis()) {
-				Cnecin();
+			if ((p & 63) == 0 && keyPressed())
 				break;
-			}
 		}
 	} else {
 		MidiStream stream;
@@ -572,10 +622,8 @@ int main(int argc, char **argv) {
 			const unsigned n = g_pipeline.takePeriod(start, g_wire);
 			if (!submit(n, totals))
 				break;
-			if (!raw && Cconis()) {
-				Cnecin();
+			if (!raw && keyPressed())
 				break;
-			}
 			++p;
 		}
 	}

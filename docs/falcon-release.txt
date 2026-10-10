@@ -21,6 +21,9 @@ Double-click F030MID.TTP. Enter a filename in the parameter box:
   DEMO.MID
 Use your own filename to play another .MID file.
 A key requests a stop (polled about once a second for files).
+Ctrl-C counts as a key. However the player ends, it hands the DSP
+and the sound system back, so the next start finds them free.
+Playback starts at once, also for long, dense files.
 Files end after about two seconds of release tail.
 With no parameters it checks MIDIIN.RAW first, then SONG.MID, then
 falls back to live MIDI IN. Enter DEMO.MID explicitly to play the demo.
@@ -59,6 +62,9 @@ Nine simultaneous voices, mono OPL2 synthesis sent to stereo audio.
 SMF formats 0/1 and single-track format 2 with ticks-per-quarter timing
 are supported, reading at most 64 tracks and loading the file into RAM.
 There is no file looping or SMPTE timing support.
+Drums share the nine voices with the music. Aftertouch is ignored.
+The modulation wheel sets the depth of a vibrato of up to half a
+semitone. Fine and coarse tuning (RPN 1 and 2) are followed.
 Host checks and calibrated-emulator MIDI gates pass with equal aggregate
 DSP/host checksums and no late periods. Live input is gated using recorded
 MIDI bytes, not the physical MIDI port. This is an approximate practical

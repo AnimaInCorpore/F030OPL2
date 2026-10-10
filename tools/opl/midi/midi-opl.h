@@ -9,12 +9,14 @@
 //
 // The instrument bank, the velocity and channel-volume arithmetic and the
 // percussion mapping follow ScummVM's AdLib driver (audio/adlib.cpp, GPL-3.0
-// or later); the voice allocator, the pitch calculation and the controller
-// handling are this project's. Pitch is the chip's own formula (frequency =
-// f-number * 49,716 Hz / 2^(20 - block)) applied one octave below the MIDI
-// note: the bank's carriers mostly run at twice the base frequency (74 of the
-// 128 melodic patches use frequency multiplier 2), which is how ScummVM's
-// driver, whose f-number table sits an octave low, sounds true pitch.
+// or later); the voice allocator, the pitch calculation, the controller
+// handling, the modulation wheel's vibrato and the stand-ins for the General
+// MIDI drum keys the bank lacks are this project's. Pitch is the chip's own
+// formula (frequency = f-number * 49,716 Hz / 2^(20 - block)) applied one
+// octave below the MIDI note: the bank's carriers mostly run at twice the
+// base frequency (74 of the 128 melodic patches use frequency multiplier 2),
+// which is how ScummVM's driver, whose f-number table sits an octave low,
+// sounds true pitch.
 #ifndef OPL_MIDI_OPL_H
 #define OPL_MIDI_OPL_H
 
@@ -35,6 +37,13 @@ public:
 	// 250 Hz, the rate the AdLib drivers of the ScummVM games tick at; the
 	// percussion patches' durations count in these ticks.
 	enum { kTicksPerSecond = 250 };
+	// The modulation wheel's vibrato: a triangle of about 5.5 Hz whose depth at
+	// full modulation is half a semitone (128 / 256), General MIDI 2's default
+	// modulation depth range. It moves every fourth tick (62.5 Hz, 5,768 / 65,536
+	// of a cycle): a pitch write costs the decoder both operators' increment and
+	// envelope, and nine voices of vibrato at the full 250 Hz made most periods
+	// late on the emulated Falcon; at 125 Hz some still were without render-ahead.
+	enum { kVibratoTicks = 4, kVibratoStep = 5768, kVibratoDepth = 128 };
 
 	Engine() : sink_(0) { reset(0, 0); }
 
@@ -46,6 +55,8 @@ public:
 		while (frameOfTick(tickCount_ + 1) <= frame)
 			++tickCount_;
 		age_ = 0;
+		vibratoPhase_ = 0;
+		vibratoTick_ = 0;
 		for (int c = 0; c < kChannels; ++c) {
 			Channel &ch = channel_[c];
 			ch.program = 0;
@@ -56,6 +67,9 @@ public:
 			ch.modulation = 0;
 			ch.pedal = false;
 			ch.rpnMsb = ch.rpnLsb = 127;
+			ch.fineMsb = 64;
+			ch.fineTune = 0;
+			ch.coarseTune = 0;
 		}
 		for (int v = 0; v < kVoices; ++v) {
 			Voice &vo = voice_[v];
@@ -69,6 +83,7 @@ public:
 			vo.vol1 = vo.vol2 = 0;
 			vo.fnum = 0;
 			vo.block = 0;
+			vo.vibrato = false;
 		}
 		if (!sink_)
 			return;
@@ -91,7 +106,9 @@ public:
 		case 0xb0: control(ch, d1, d2); break;
 		case 0xc0: channel_[ch].program = d1 & 0x7f; break;
 		case 0xe0: pitchBend(ch, (int)(d1 & 0x7f) | ((int)(d2 & 0x7f) << 7)); break;
-		default: break;   // key pressure and the like: not an OPL2 feature
+		// Key and channel pressure: General MIDI leaves their effect to the
+		// instrument, and General MIDI 2 gives them no effect by default.
+		default: break;
 		}
 	}
 
@@ -132,7 +149,10 @@ public:
 private:
 	struct Channel {
 		uint8_t program, volume, expression, modulation, bendRange, rpnMsb, rpnLsb;
+		uint8_t fineMsb;     // RPN 1's data entry MSB, for the LSB that may follow
 		int bend;            // -8192..8191
+		int fineTune;        // RPN 1, in 1/256 semitone: -256..255
+		int coarseTune;      // RPN 2, in semitones: -64..63
 		bool pedal;
 	};
 	struct Voice {
@@ -146,6 +166,7 @@ private:
 		uint8_t vol1, vol2;  // the instrument's own levels plus velocity, before channel volume
 		uint16_t fnum;
 		uint8_t block;
+		bool vibrato;        // its pitch carries the modulation wheel's vibrato
 	};
 
 	// ---- tables
@@ -185,10 +206,18 @@ private:
 
 	// ---- time
 	void tick() {
+		const bool vibratoStep = ++vibratoTick_ >= kVibratoTicks;
+		if (vibratoStep) {
+			vibratoTick_ = 0;
+			vibratoPhase_ = (uint16_t)(vibratoPhase_ + kVibratoStep);
+		}
 		for (int v = 0; v < kVoices; ++v) {
 			Voice &vo = voice_[v];
 			if (vo.remaining > 0 && --vo.remaining == 0 && vo.keyed)
 				keyOff(v, false);
+			// a sounding note follows the vibrato, and returns to its pitch when the wheel does
+			if (vibratoStep && vo.keyed && (vo.vibrato || channel_[vo.channel].modulation))
+				repitch(v);
 		}
 	}
 
@@ -196,6 +225,7 @@ private:
 	void noteOn(int ch, int note, int velocity) {
 		const Patch *patch;
 		if (ch == kPercussionChannel) {
+			note = percussionKey(note);
 			const uint8_t key = kGmPercussionMap[note & 0x7f];
 			if (key == 0xff)
 				return;
@@ -230,13 +260,12 @@ private:
 		vo.vol2 = (uint8_t)(v2 > 63 ? 63 : v2);
 
 		const int o1 = opOffset(v, 0), o2 = opOffset(v, 1);
-		const int mod = channel_[ch].modulation >= 32 ? 0x40 : 0;
-		put(0x20 + o1, patch->modCharacteristic | mod);
+		put(0x20 + o1, patch->modCharacteristic);
 		put(0x40 + o1, levelRegister(patch->modLevel, modulatorVolume(vo, channel_[ch])));
 		put(0x60 + o1, ~patch->modAttackDecay & 0xff);
 		put(0x80 + o1, ~patch->modSustainRelease & 0xff);
 		put(0xe0 + o1, patch->modWaveform);
-		put(0x20 + o2, patch->carCharacteristic | mod);
+		put(0x20 + o2, patch->carCharacteristic);
 		put(0x40 + o2, levelRegister(patch->carLevel, carrierVolume(vo, channel_[ch])));
 		put(0x60 + o2, ~patch->carAttackDecay & 0xff);
 		put(0x80 + o2, ~patch->carSustainRelease & 0xff);
@@ -246,6 +275,8 @@ private:
 	}
 
 	void noteOff(int ch, int note) {
+		if (ch == kPercussionChannel)
+			note = percussionKey(note);
 		for (int v = 0; v < kVoices; ++v) {
 			Voice &vo = voice_[v];
 			if (vo.channel != ch || vo.note != note || !vo.keyed)
@@ -345,38 +376,97 @@ private:
 		*block = (uint8_t)b;
 	}
 
+	// The vibrato's offset now, in 1/256 semitone, for a modulation of 0-127.
+	int vibratoOffset(int modulation) const {
+		const int triangle = vibratoPhase_ < 32768 ? vibratoPhase_ : 65535 - vibratoPhase_;   // 0..32767
+		return ((triangle * 2 - 32767) * (modulation * kVibratoDepth / 127)) / 32768;
+	}
+
+	// The voice's offset from its note: bend, tuning and vibrato.
+	int pitchOffset(Voice &vo) {
+		const Channel &ch = channel_[vo.channel];
+		vo.vibrato = ch.modulation != 0;
+		return (ch.bend * ch.bendRange * 256) / 8192 + ch.coarseTune * 256 + ch.fineTune +
+		       (vo.vibrato ? vibratoOffset(ch.modulation) : 0);
+	}
+
 	void pitch(int v, bool keyOn) {
 		Voice &vo = voice_[v];
-		const Channel &ch = channel_[vo.channel];
-		const int offset = (ch.bend * ch.bendRange * 256) / 8192;
-		noteToFnum(vo.note, offset, &vo.fnum, &vo.block);
+		noteToFnum(vo.note, pitchOffset(vo), &vo.fnum, &vo.block);
 		put(0xa0 + v, vo.fnum & 0xff);
 		put(0xb0 + v, (keyOn ? 0x20 : 0) | vo.block << 2 | (vo.fnum >> 8));
 	}
 
+	// A sounding voice to its pitch now; only the registers that change are written.
+	void repitch(int v) {
+		Voice &vo = voice_[v];
+		uint16_t fnum;
+		uint8_t block;
+		noteToFnum(vo.note, pitchOffset(vo), &fnum, &block);
+		const bool low = (fnum & 0xff) != (vo.fnum & 0xff);
+		const bool high = block != vo.block || (fnum >> 8) != (vo.fnum >> 8);
+		vo.fnum = fnum;
+		vo.block = block;
+		if (low)
+			put(0xa0 + v, fnum & 0xff);
+		if (high)
+			put(0xb0 + v, 0x20 | block << 2 | (fnum >> 8));
+	}
+
+	// Every sounding voice of the channel to its pitch, both registers written.
+	void retune(int ch) {
+		for (int v = 0; v < kVoices; ++v)
+			if (voice_[v].channel == ch && voice_[v].keyed)
+				pitch(v, true);
+	}
+
 	void pitchBend(int ch, int value14) {
 		channel_[ch].bend = value14 - 8192;
-		for (int v = 0; v < kVoices; ++v)
-			if (voice_[v].channel == ch && voice_[v].keyed) {
-				Voice &vo = voice_[v];
-				const Channel &c = channel_[ch];
-				noteToFnum(vo.note, (c.bend * c.bendRange * 256) / 8192, &vo.fnum, &vo.block);
-				put(0xa0 + v, vo.fnum & 0xff);
-				put(0xb0 + v, 0x20 | vo.block << 2 | (vo.fnum >> 8));
-			}
+		retune(ch);
+	}
+
+	// RPN 1: 8,192 is in tune, each step 1/8,192 of 100 cents either way.
+	void setFineTune(int ch, int value14) {
+		channel_[ch].fineTune = ((value14 - 8192) * 256) / 8192;
+		retune(ch);
+	}
+
+	// The General MIDI drum keys the bank has no patch for, played by the
+	// nearest patch it has: ride cymbal 2 by ride cymbal 1, the shaken and
+	// scraped ones (vibraslap, maracas, guiros) by the cabasa, the cuicas by the
+	// high congas. The whistles stay silent; no drum stands in for a pitch.
+	static int percussionKey(int note) {
+		switch (note) {
+		case 58: return 69;   // vibraslap
+		case 59: return 51;   // ride cymbal 2
+		case 70: return 69;   // maracas
+		case 73: return 69;   // short guiro
+		case 74: return 69;   // long guiro
+		case 78: return 62;   // mute cuica
+		case 79: return 63;   // open cuica
+		default: return note;
+		}
 	}
 
 	// ---- controllers
 	void control(int ch, int cc, int value) {
 		Channel &c = channel_[ch];
 		switch (cc) {
-		case 1:
+		case 1:     // the vibrato follows from the next tick
 			c.modulation = (uint8_t)value;
-			setVibrato(ch, value >= 32);
 			break;
-		case 6:     // data entry: the pitch bend range, in semitones, when RPN 0 is selected
-			if (c.rpnMsb == 0 && c.rpnLsb == 0 && value > 0)
+		case 6:     // data entry MSB, for the selected RPN
+			if (c.rpnMsb != 0)
+				break;
+			if (c.rpnLsb == 0 && value > 0)          // pitch bend range, in semitones
 				c.bendRange = (uint8_t)(value > 24 ? 24 : value);
+			else if (c.rpnLsb == 1) {                // fine tuning
+				c.fineMsb = (uint8_t)value;
+				setFineTune(ch, value << 7);
+			} else if (c.rpnLsb == 2) {              // coarse tuning, in semitones
+				c.coarseTune = value - 64;
+				retune(ch);
+			}
 			break;
 		case 7:
 			c.volume = (uint8_t)value;
@@ -393,6 +483,14 @@ private:
 					if (voice_[v].channel == ch && voice_[v].held)
 						keyOff(v, false);
 			break;
+		case 38:    // data entry LSB: only fine tuning's counts
+			if (c.rpnMsb == 0 && c.rpnLsb == 1)
+				setFineTune(ch, c.fineMsb << 7 | value);
+			break;
+		case 98:    // an NRPN: the data entry that follows is not for an RPN
+		case 99:
+			c.rpnMsb = c.rpnLsb = 127;
+			break;
 		case 100: c.rpnLsb = (uint8_t)value; break;
 		case 101: c.rpnMsb = (uint8_t)value; break;
 		case 120:   // all sound off
@@ -407,20 +505,10 @@ private:
 			c.modulation = 0;
 			c.pedal = false;
 			refreshLevels(ch);
-			setVibrato(ch, false);
+			retune(ch);
 			break;
 		default:
 			break;
-		}
-	}
-
-	void setVibrato(int ch, bool on) {
-		for (int v = 0; v < kVoices; ++v) {
-			Voice &vo = voice_[v];
-			if (vo.channel != ch || !vo.patch)
-				continue;
-			put(0x20 + opOffset(v, 0), vo.patch->modCharacteristic | (on ? 0x40 : 0));
-			put(0x20 + opOffset(v, 1), vo.patch->carCharacteristic | (on ? 0x40 : 0));
 		}
 	}
 
@@ -428,6 +516,8 @@ private:
 	uint64_t now_;
 	uint64_t tickCount_;
 	uint32_t age_;
+	uint16_t vibratoPhase_;
+	uint8_t vibratoTick_;
 	Channel channel_[kChannels];
 	Voice voice_[kVoices];
 };
