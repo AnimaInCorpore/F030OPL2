@@ -28,6 +28,12 @@
 // what the machine looks like (TOS, cookies, TPA, memory) and waits for a key at
 // each stage, so the screen shows how far the program got.
 //
+// Under FreeMiNT it locks the DSP and the sound system, and SIGINT, SIGTERM,
+// SIGQUIT and SIGHUP stop the song like a key, so both are handed back. Each
+// period's exchange still waits for READY inside one Supexec, which MiNT cannot
+// preempt: with only two periods of audio buffered on the DSP, a wait that MiNT
+// can preempt loses to any busy process beside it (docs/midi-player.md).
+//
 // RESULT.BIN, written when a file ends, carries the DSP's counters for
 // midi-gate.py: status (late periods << 12 | periods rendered), the output
 // checksum, the least slack in ring words, periods, parameter events,
@@ -35,6 +41,8 @@
 #include <mint/basepage.h>
 #include <mint/falcon.h>
 #include <mint/osbind.h>
+#include <mint/sysbind.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,6 +103,15 @@ inline uint32_t portReceive() {
 inline uint32_t portExchange(uint32_t word) {
 	portSend(word);
 	return portReceive();
+}
+
+// ---- stopping
+
+// SIGINT, SIGTERM, SIGQUIT and SIGHUP stop the song the way a key does, so the
+// DSP and the sound system are always handed back.
+volatile sig_atomic_t g_stop = 0;
+void onSignal(int) {
+	g_stop = 1;
 }
 
 // ---- -d: say what the machine looks like and stop at each stage
@@ -279,9 +296,17 @@ void putWord(FILE *f, uint32_t v) {
 	fputc((int)v & 0xff, f);
 }
 
+// The DSP and the sound system go back to the next program however we leave.
+bool g_dsp_held = false;
+
 bool bootDsp() {
-	if (Dsp_Reserve(16, 16) < 0) {
+	if (Dsp_Lock() != 0) {
 		printf("the DSP is in use by another program\n");
+		return false;
+	}
+	g_dsp_held = true;
+	if (Dsp_Reserve(16, 16) < 0) {
+		printf("the DSP cannot reserve its memory\n");
 		return false;
 	}
 	Dsp_ExecBoot(kAtariDspOplBoot, ATARI_DSP_OPL_BOOT_WORDS, 3);
@@ -299,8 +324,6 @@ bool bootDsp() {
 	return true;
 }
 
-// The DSP and the sound system go back to the next program however we leave.
-bool g_dsp_held = false;
 void releaseDsp() {
 	if (g_dsp_held)
 		Dsp_Unlock();
@@ -380,6 +403,11 @@ int main(int argc, char **argv) {
 	long seconds = -1;
 	int ahead = -1;            // -1: the default for the mode; 0 or 1: asked for
 	const char *rawFile = 0;
+	Pdomain(1);                // MiNT semantics (EINVFN under TOS)
+	signal(SIGINT, onSignal);
+	signal(SIGTERM, onSignal);
+	signal(SIGQUIT, onSignal);
+	signal(SIGHUP, onSignal);
 	for (int i = 1; i < argc; ++i) {
 		if (!strcmp(argv[i], "-l"))
 			live = true;
@@ -452,7 +480,6 @@ int main(int argc, char **argv) {
 	       g_render_ahead ? ", rendering ahead" : "");
 
 	stage("file loaded, before the DSP");
-	g_dsp_held = true;
 	if (!bootDsp()) {
 		releaseDsp();
 		return 1;
@@ -480,7 +507,7 @@ int main(int argc, char **argv) {
 		const uint32_t periods = (uint32_t)((songFrames + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
 		Message m;
 		bool have = smf.next(&m);
-		for (uint32_t p = 0; p < periods && !g_port_failed; ++p) {
+		for (uint32_t p = 0; p < periods && !g_port_failed && !g_stop; ++p) {
 			const uint64_t start = (uint64_t)p * kPeriodFrames, end = start + kPeriodFrames;
 			while (have && m.frame < end) {
 				if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
@@ -520,7 +547,7 @@ int main(int argc, char **argv) {
 			rawEnd = last + 1 + (uint32_t)((kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
 		}
 		const uint32_t limit = rawFile ? rawEnd : seconds > 0 ? (uint32_t)(seconds * 64) : 0xffffffffu;   // ~64 periods a second
-		while (p < limit && !g_port_failed) {
+		while (p < limit && !g_port_failed && !g_stop) {
 			const uint64_t start = (uint64_t)p * kPeriodFrames;
 			// everything that arrived since the last period sounds at its start
 			for (int guard = 0; guard < 512; ++guard) {

@@ -240,17 +240,39 @@ if a keyboard is the intended input.
   `-i` with the same code after the byte is read.
 - Successful physical-Falcon playback and timing under a loaded 68030 are not
   established by the recorded gates.
-- **FreeMiNT is untested, and the pacing suggests it will not cooperate.** Each
-  period `submitSuper` runs under `Supexec` and spins on the host port until
-  the DSP answers `REPLY_READY`, and the DSP answers only when it can take the
-  next period. The 68030 therefore spends its idle time spinning in supervisor
-  mode, which MiNT cannot preempt. F030SID's player did the same: under
-  FreeMiNT without memory protection its music played while the system
-  stopped responding, and a busy process beside it kept 0.4% of its speed
-  (F030SID `docs/player.md`, "Under FreeMiNT", Hatari, 2026-10-09). A
-  cooperative version would wait in user mode, test readiness in a short `Supexec`
-  or XBIOS call and sleep in `Fselect`. MiNT rounds `Fselect` up to its 20 ms
-  tick, about 1.3 periods, so it needs more render-ahead than TOS does.
+- **Under FreeMiNT it plays on an idle system; beside a busy process it has
+  late periods (dropouts).** Each period `submitSuper` runs under `Supexec` and
+  spins on the host port until the DSP answers `REPLY_READY`. That spin lasts at
+  most one period, so the system keeps running: unlike F030SID's earlier player,
+  which spun for the whole tune and left a busy neighbour 0.4% of its speed.
+  F030MID locks the DSP (`Dsp_Lock`) and the sound system, and SIGINT, SIGTERM,
+  SIGQUIT and SIGHUP stop it like a key, so both are released (before, a signal
+  killed it with the DSP still streaming and both locks held).
+
+  F030SID's remedy, waiting in user mode, was tried and dropped. The DSP
+  buffers two periods (31 ms), shorter than a MiNT timeslice, so any wait MiNT
+  can preempt lets a busy neighbour hold the CPU past the deadline: with
+  `Syield` between polls the test song had 465 of 990 periods late and took
+  22.3 s instead of 16.7; polling without `Syield` gave 433, and raising the
+  priority with `Prenice` 494. (`Fselect` is no better: MiNT rounds it up to
+  its 20 ms tick, longer than a period.) Playing well beside a busy process
+  needs deeper buffering on the DSP, for example a queue of several staged
+  periods of events, which a keyboard's latency must be kept out of.
+
+  Measured 2026-10-10 in the DSP-calibrated Hatari (`--fpu 68882`), TOS 4.02,
+  FreeMiNT 1.19 snapshot `648983e1` with memory protection off, started by a
+  small `Pvfork`/`Pexec` program, not bash (see F030SID `docs/player.md`).
+  `build/midi-test/song.mid`, 15.5 s, rendering ahead:
+
+  | Situation | Before | Now |
+  | --- | --- | --- |
+  | Alone | 990 periods, none late, checksum equal | the same |
+  | Beside a busy loop, whole song | 42 late; the loop kept 62% | 33 late; 63% |
+  | Beside a busy loop, SIGINT after 10 s | killed, no cleanup | stopped in 0.25 s, locks released |
+
+  The late counts vary from run to run by a few periods. Not tested: memory
+  protection on, the XaAES desktop, live input under MiNT, a physical Falcon
+  running MiNT.
 
 ### Limits
 
