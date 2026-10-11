@@ -3,6 +3,9 @@
   "release_tag": "v0.2.1",
   "source_commit": "076214ed1b7c7e392fc8154468d3b51fc78a8f87",
   "note": "Pre-publication validation of the packaged v0.2.1 player; not yet published. External songs were fetched from bitmidi.com for testing only and are not in the repository; they are identified by SHA-256.",
+  "release_url": "https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.1",
+  "prerelease": true,
+  "published_at": "2026-10-11T05:27:38Z",
   "commands": [
     "make check",
     "make midi-gate midi-live-gate",
@@ -17,33 +20,6 @@
     "midi_failures": 0
   },
   "packaged_player_sha256": "a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6",
-  "assets_local": [
-    {
-      "name": "F030MID.TOS",
-      "size": 180312,
-      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
-    },
-    {
-      "name": "F030MID.TTP",
-      "size": 180312,
-      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
-    },
-    {
-      "name": "F030OPL2-SOURCE.tar.gz",
-      "size": 197887,
-      "digest": "sha256:7a91d0d7431e1029bc11ae62389f4445fe4fdc50e1ea42956b6d244a72743754"
-    },
-    {
-      "name": "OPL2.ZIP",
-      "size": 212512,
-      "digest": "sha256:4d40f753c80959f6d15cd4187e8cffd6e81b9af4878eeccebd55effdc16e389a"
-    },
-    {
-      "name": "SHA256.TXT",
-      "size": 320,
-      "digest": "sha256:4ec095e96f2cee6fb73602b199b75b65494adeddc6e56c58d6c3c1b0cdd0549c"
-    }
-  ],
   "midi_gates": [
     {
       "result_path": "build/package-gate-on/results.json",
@@ -387,5 +363,32 @@
     "Fine and coarse tuning (RPN 1/2) are covered by host unit checks only: no song at hand uses them",
     "The terminate vector under FreeMiNT was not exercised",
     "Physical MIDI port input"
+  ],
+  "assets": [
+    {
+      "name": "F030MID.TOS",
+      "size": 180312,
+      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
+    },
+    {
+      "name": "F030MID.TTP",
+      "size": 180312,
+      "digest": "sha256:a93f9e81e4e75a92fb5c5fc156356c2c5c28151cae49e7e54952d621793438e6"
+    },
+    {
+      "name": "F030OPL2-SOURCE.tar.gz",
+      "size": 197887,
+      "digest": "sha256:7a91d0d7431e1029bc11ae62389f4445fe4fdc50e1ea42956b6d244a72743754"
+    },
+    {
+      "name": "OPL2.ZIP",
+      "size": 212512,
+      "digest": "sha256:4d40f753c80959f6d15cd4187e8cffd6e81b9af4878eeccebd55effdc16e389a"
+    },
+    {
+      "name": "SHA256.TXT",
+      "size": 320,
+      "digest": "sha256:4ec095e96f2cee6fb73602b199b75b65494adeddc6e56c58d6c3c1b0cdd0549c"
+    }
   ]
 }

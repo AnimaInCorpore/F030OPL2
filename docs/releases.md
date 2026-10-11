@@ -1,8 +1,9 @@
 # Releases, gate environment and validation
 
-[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.0)
-currently provides the `v0.2.0` prerelease from source commit `1171559`; the
-`v0.1.0` prerelease from `9dd60bd` stays published unchanged. `v0.2.0` adds the
+[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.1)
+currently provides the `v0.2.1` prerelease from source commit `076214e`; the
+`v0.2.0` prerelease from `1171559` and the `v0.1.0` prerelease from `9dd60bd`
+stay published unchanged. `v0.2.0` adds the
 FreeMiNT DSP lock and clean stop on signals, dates the ZIP entries by the
 source commit instead of 1980-01-01, and adds a FreeMiNT section to the
 instructions. Assets
@@ -13,8 +14,7 @@ and the source commit. The two player files are
 identical; the `.TTP` extension lets the TOS desktop ask for parameters.
 Commercial songs, toolchain binaries and ROMs are not included.
 
-`v0.2.1` is packaged from source commit `076214e` and validated, not yet
-published. Its player starts a file at once instead of first reading the whole
+`v0.2.1`, published 2026-10-11 from source commit `076214e`: its player starts a file at once instead of first reading the whole
 file (Smoke on the Water: about 10.3 s of silence before, 0.33 s now); reads
 Control-C as a key under plain TOS and releases the DSP and the sound system
 through the terminate vector however else it ends; plays the GM drum keys the
@@ -29,7 +29,7 @@ reader changed with it; the DSP kernel, decoder and transport did not.
 | --- | --- |
 | [validation.json](validation.json) | Initial 2026-10-05 baseline, before later stream optimizations; historical measurements are preserved. |
 | [current-validation.json](current-validation.json) | Development snapshot of `8961ed6` on 2026-10-08: host checks, five DSP bench cases, one-second stress/rhythm streams in both modes, and MIDI file/raw-live gates. The filename is retained for existing links; this is not the latest packaged release record. |
-| [release-validation-v0.2.1.json](release-validation-v0.2.1.json) | `v0.2.1` at `076214e`, validated on 2026-10-10 before publication: packaged player, demo in both modes, raw-live input, a vibrato worst case in both modes, Control-C under EmuTOS and TOS 4.02, startup time, and four external songs in both modes against `v0.2.0` on the same files. |
+| [release-validation-v0.2.1.json](release-validation-v0.2.1.json) | Published `v0.2.1` at `076214e`, validated on 2026-10-10 before publication: packaged player, demo in both modes, raw-live input, a vibrato worst case in both modes, Control-C under EmuTOS and TOS 4.02, startup time, and four external songs in both modes against `v0.2.0` on the same files. |
 | [release-validation-v0.2.0.json](release-validation-v0.2.0.json) | Published `v0.2.0` at `1171559`, validated on 2026-10-10: packaged player, generated demo in both render-ahead modes, raw-live input, host checks, uploaded-asset digests, and FreeMiNT measurements on the identical binary. Tester reports are listed separately from validation. |
 | [release-validation.json](release-validation.json) | Published `v0.1.0` at `9dd60bd`, validated on 2026-10-08: packaged player, generated demo in both render-ahead modes, raw-live input, host checks and uploaded-asset digests. |
 | [speed-quality.md](speed-quality.md) and [midi-player.md](midi-player.md#verification) | Dated optimization baselines and external-song corpus results, retained separately from publication tests. |
