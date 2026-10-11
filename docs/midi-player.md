@@ -26,6 +26,9 @@ F030MID.TTP [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
   Control-C is read as an ordinary key. If the program is ended some other way
   under plain TOS, its terminate vector still stops the stream and releases the
   DSP and the sound system, so the next start does not find the DSP locked.
+- The first line the player prints and its closing summary both name its
+  version (`F030MID v0.2.2: ...`), so a screen left at the end of a song
+  still shows which build played it.
 - With no filename or live-mode argument, startup checks `MIDIIN.RAW` first,
   then `SONG.MID`, then falls back to physical MIDI IN if neither is available.
   `DEMO.MID` is not selected automatically; enter its name in the parameter box.

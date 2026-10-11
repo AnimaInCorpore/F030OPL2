@@ -30,6 +30,9 @@ EXE := $(if $(filter MINGW% MSYS% CYGWIN%,$(HOST_UNAME)),.exe,)
 # Falcon has no FPU, so the objects are soft-float 68030 code linked with the
 # 68000 (soft-float) runtime.
 M68K_CXX ?= m68k-atari-mintelf-g++
+# The version F030MID prints: the release's when packaging (VERSION=...), else
+# what git says about the checkout.
+MIDI_VERSION := $(if $(VERSION),$(VERSION),$(shell git describe --tags --always --dirty 2>/dev/null || echo unknown))
 MIDI := $(OPL)/midi
 MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
 .PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav midi-hatari
@@ -99,7 +102,7 @@ $(OPL)/build/headless/opl-midi-test$(EXE): $(MIDI)/midi-test.cpp $(MIDI_HEADERS)
 # F030MID.TOS embeds the DSP image the `dsp` target generates.
 midi-tos: dsp
 	mkdir -p build/midi-tos release
-	$(M68K_CXX) -m68030 -msoft-float -O2 -std=gnu++17 -fno-exceptions -fno-rtti -Wall -Wextra 		-I $(OPL)/build -I $(MIDI) -c $(MIDI)/f030mid.cpp -o build/midi-tos/f030mid.o
+	$(M68K_CXX) -m68030 -msoft-float -O2 -std=gnu++17 -fno-exceptions -fno-rtti -Wall -Wextra 		-I $(OPL)/build -I $(MIDI) '-DF030MID_VERSION="$(MIDI_VERSION)"' -c $(MIDI)/f030mid.cpp -o build/midi-tos/f030mid.o
 	$(M68K_CXX) -m68000 build/midi-tos/f030mid.o -o build/midi-tos/F030MID.TOS
 	cp build/midi-tos/F030MID.TOS release/f030mid.tos
 

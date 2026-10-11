@@ -25,6 +25,7 @@ Ctrl-C counts as a key. However the player ends, it hands the DSP
 and the sound system back, so the next start finds them free.
 Playback starts at once, also for long, dense files.
 Files end after about two seconds of release tail.
+The first and the last line on screen show the player's version.
 With no parameters it checks MIDIIN.RAW first, then SONG.MID, then
 falls back to live MIDI IN. Enter DEMO.MID explicitly to play the demo.
 

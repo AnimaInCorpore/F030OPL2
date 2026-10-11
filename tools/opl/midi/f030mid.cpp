@@ -58,6 +58,10 @@
 
 using namespace OplMidi;
 
+#ifndef F030MID_VERSION
+#define F030MID_VERSION "unknown"
+#endif
+
 namespace {
 
 enum {
@@ -519,7 +523,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	g_render_ahead = ahead < 0 ? !live : ahead != 0;
-	printf("F030MID: %s%s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file",
+	printf("F030MID " F030MID_VERSION ": %s%s\n", live ? "live MIDI IN synthesizer, any key quits" : "playing the file",
 	       g_render_ahead ? ", rendering ahead" : "");
 
 	stage("file loaded, before the DSP");
@@ -646,7 +650,7 @@ int main(int argc, char **argv) {
 		putWord(out, g_pipeline.overflowed() ? 1 : 0);
 		fclose(out);
 	}
-	printf("periods %lu, events %lu, notes %lu, late periods %lu%s\n", (unsigned long)totals.periods,
+	printf("F030MID " F030MID_VERSION ": periods %lu, events %lu, notes %lu, late periods %lu%s\n", (unsigned long)totals.periods,
 	       (unsigned long)totals.events, (unsigned long)totals.note_ons, (unsigned long)(status >> 12),
 	       g_pipeline.overflowed() ? ", EVENT OVERFLOW" : "");
 	stopAudio();
