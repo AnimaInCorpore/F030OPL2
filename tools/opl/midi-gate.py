@@ -62,7 +62,11 @@ def main():
     parser.add_argument("--ahead", choices=("default", "on", "off"), default="default",
                         help="the DSP's render-ahead mode: the player's default (on for a file), or forced")
     parser.add_argument("--tos", type=Path, default=HERE.parent.parent / "build/midi-tos/F030MID.TOS")
-    parser.add_argument("--vbls", type=int, default=6000)
+    parser.add_argument("--vbls", type=int, default=6000,
+                        help="how long the emulator may run; a song needs about 53 a second")
+    parser.add_argument("--profile", action="store_true",
+                        help="profile the DSP from the stream's start to its stop, SSI interrupts, tracking and "
+                             "host port included, and save profile.txt; read it with profile-labels.py")
     args = parser.parse_args()
     if not HATARI.is_file():
         parser.error(f"the DSP-calibrated Hatari is not at {HATARI}")
@@ -95,8 +99,18 @@ def main():
         (case / ("AHEAD.FLG" if args.ahead == "on" else "NOAHEAD.FLG")).write_bytes(b"1")
 
     stop = listing_symbol(HERE / "dsp/OPLRT.LST", "stream_stopped")
-    (case / "start.ini").write_text(f"db pc = ${stop:04x} :once :trace :file {(case / 'end.ini').resolve()}\n")
-    (case / "end.ini").write_text("quit 0\n")
+    (case / "profile.txt").unlink(missing_ok=True)
+    if args.profile:
+        start = listing_symbol(HERE / "dsp/OPLRT.LST", "command_stream_start")
+        (case / "start.ini").write_text(
+            f"db pc = ${start:04x} :once :trace :file {(case / 'begin.ini').resolve()}\n")
+        (case / "begin.ini").write_text(
+            "dp on\n"
+            f"db pc = ${stop:04x} :once :trace :file {(case / 'end.ini').resolve()}\n")
+        (case / "end.ini").write_text(f"dp save {(case / 'profile.txt').resolve()}\ndp off\nquit 0\n")
+    else:
+        (case / "start.ini").write_text(f"db pc = ${stop:04x} :once :trace :file {(case / 'end.ini').resolve()}\n")
+        (case / "end.ini").write_text("quit 0\n")
     with (case / "debug.log").open("w") as log:
         subprocess.run([str(HATARI), "--machine", "falcon", "--dsp", "emu", "--memsize", "14",
                         "--conout", "2", "--tos", str(TOS), "--patch-tos", "true",
