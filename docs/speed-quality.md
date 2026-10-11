@@ -12,6 +12,7 @@ Contents, in the order the work was done, with where it stands:
 - the render-ahead ring, which banks the idle time quiet periods leave (done,
   off by default, on when F030MID plays a file);
 - the removal of the reset-event burst at start (done).
+- the serial carrier stage at eight cycles a frame (done, bit exact).
 
 The figures below are retained historical F030OPL2 measurements from the
 initial validation and 2026-10-05 optimization work, not fresh runs of the current checkout.
@@ -214,6 +215,41 @@ still equals the host's (`a440`, `song`, Falcon 3 `C`, `F`, Ultima 4
 `Combat`, live input), and with render-ahead the tightest slack rose by about
 35 frames on each song: `C.MID` 428 to 463, `F.MID` 261 to 296, `song.mid`
 191 to 225, `Combat` 538 to 573.
+
+## Serial carrier stage (2026-10-11)
+
+A dense song showed the limit again. Smoke on the Water (24 tracks) keeps all
+nine voices in feedback FM for long stretches, and the new voice stealing,
+which lets more of its notes sound at once, raised its late periods with
+render-ahead from 11 to 20 of 21,365 (344 to 531 without). A whole-song DSP
+profile (`midi-gate.py --profile`, read with `profile-labels.py`) charged
+`stage_mod_fb` 78.5 and `stage_serial_mix` 63.0 cycles a frame on average, the
+boundary pass about 56; most of the tracking and slot-wait labels are idle time
+that render-ahead spends waiting.
+
+`stage_serial_mix`, the carrier of every FM channel, was eight instructions and
+nine cycles a frame. The index now rides to `n0` as a parallel move of the
+phase advance; loading the mix word fills the one instruction `n0` needs before
+it can address; and the product accumulates onto that word with `mac` instead
+of a multiply and an add, which leaves the same 56-bit sum (the word in A1, A0
+clear, plus the whole product). Seven instructions, eight cycles. The feedback
+modulator's loop has no register free for the same move.
+
+Measured under the calibrated Hatari, every bench case word exact against the
+host reference and every stream and MIDI checksum unchanged:
+
+| case | before | after |
+| --- | ---: | ---: |
+| bench stress, timing, paths, cycles/frame | 286.87, 295.46, 231.64 | 277.87, 286.46, 224.87 |
+| bench phase, rhythm, cycles/frame | 258.51, 254.41 | 257.21, 249.23 |
+| stress stream, late periods / min slack | 0 / 10 frames | 0 / 32 frames |
+| rhythm stream, late periods | 0 | 0 |
+| `song.mid` min slack, render-ahead / off; live input | 225 / 58; 226 | 240 / 79; 243 |
+| Smoke on the Water late periods, render-ahead / off | 20 / 531 | 9 / 368 |
+
+The "before" Smoke figures are with the new voice stealing; v0.2.1 had 11 and
+344. Smoke is still late in both modes, so this is headroom, not a fix. The DSP
+program shrank from 2,148 to 2,147 words. Nothing has run on hardware.
 
 ## From F030SID (2026-10-09): host transport and SSI input
 

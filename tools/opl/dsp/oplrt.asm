@@ -301,6 +301,10 @@ sim_done:
         rts
 
 ; A carrier modulated by the ring, accumulating into the mix: x0 = gain.
+; The index rides to n0 beside the phase advance; loading the mix word
+; fills the one instruction n0 needs before it can address, and the
+; product accumulates onto it: mix << 24 plus the whole product, the sum a
+; multiply then an add of the word would leave. Eight cycles a frame.
 stage_serial_mix:
         move    #MOD_RING,r3
         move    x:render_mix,r5
@@ -309,12 +313,11 @@ stage_serial_mix:
         do      x:span_frames,ssm_done
         add     b,a
         and     y1,a
-        move    a1,n0
-        mac     x1,y1,b
+        mac     x1,y1,b   a1,n0
+        move    y:(r5),a
         move    y:(r0+n0),y0
-        mpy     x0,y0,a   y:(r5),y0
-        add     y0,a      x:(r3)+,y0
-        move    y0,a      a,y:(r5)+
+        mac     x0,y0,a
+        move    x:(r3)+,a a,y:(r5)+
 ssm_done:
         move    b10,l:(r7)
         rts
