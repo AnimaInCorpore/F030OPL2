@@ -161,8 +161,17 @@ binary requires no FPU: it uses soft-float 68030 code linked against the
   every fourth tick of the engine (62.5 Hz), whose depth is the wheel's position times half a
   semitone (General MIDI 2's default modulation depth range). Only the pitch
   registers that change are written.
-- **Voice stealing**: a never-used voice, else the one released longest ago, else
-  the oldest sounding note. Re-striking a held note re-triggers its own voice.
+- **Voice stealing** protects long notes and lead lines. Nine voices serve
+  sixteen channels, so a dense song steals constantly, and the oldest
+  sounding note is usually a held one: an opening sound effect or a solo.
+  The order is a never-used voice, then the one released longest ago, then a
+  note only the sustain pedal holds, then a drum, then a note of the new
+  note's own channel or of a channel with several notes sounding (a chord
+  loses a tone), and only then a channel's single note; within each class the
+  oldest goes. Re-striking a held note re-triggers its own voice. More notes
+  then sound at once, which costs DSP time: Smoke on the Water (24 tracks)
+  went from 11 to 20 late periods of 21,365 with render-ahead, 344 to 531
+  without; three other dense songs improved (2026-10-11, emulated Falcon).
 - **Levels** follow the instrument bank: velocity raises the instrument's own levels
   by each operator's sensitivity, channel volume and expression (CC7 x CC11)
   scale the carrier, and the modulator too when the patch is additive.

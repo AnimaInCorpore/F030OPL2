@@ -115,6 +115,46 @@ void testVoices() {
 	r.clear();
 	e.send(0x90, 80, 100);
 	CHECK(r.count(0xa4) == 1);          // it went to voice 4
+
+	// a channel's only note outlives the chords around it: a lead held on
+	// channel 1 since before eight chord notes on channel 0 keeps its voice
+	// when channel 2 needs one, which comes from the oldest chord note instead
+	e.reset(&r, 0);
+	e.send(0x91, 72, 100);              // voice 0, the oldest
+	for (int i = 0; i < 8; ++i)
+		e.send(0x90, (uint8_t)(48 + i), 100);
+	r.clear();
+	e.send(0x92, 40, 100);
+	CHECK_EQ(r.count(0xa0), 0);
+	CHECK_EQ(r.count(0xa1), 1);
+	// the new note's own channel gives up its oldest note even when it is the
+	// channel's only one: a line moving on
+	r.clear();
+	e.send(0x91, 74, 100);
+	CHECK_EQ(r.count(0xa0), 1);
+
+	// a drum goes before a melodic note, and a note only the pedal holds
+	// before a drum
+	e.reset(&r, 0);
+	e.send(0x90, 60, 100);              // voice 0: the oldest, channel 0's only note
+	e.send(0x99, 36, 100);              // voice 1: bass drum, sounding
+	for (int i = 1; i < 8; ++i)
+		e.send((uint8_t)(0x90 + i), (uint8_t)(60 + i), 100);   // one note on each of seven more channels
+	r.clear();
+	e.send(0x9b, 40, 100);
+	CHECK_EQ(r.count(0xa0), 0);
+	CHECK_EQ(r.count(0xa1), 1);
+	e.reset(&r, 0);
+	e.send(0x99, 36, 100);              // voice 0: a drum
+	e.send(0xb1, 64, 127);
+	e.send(0x91, 50, 100);              // voice 1: channel 1, then its key goes up under the pedal
+	e.send(0x81, 50, 0);
+	for (int i = 0; i < 7; ++i)
+		e.send((uint8_t)(0x92 + i), (uint8_t)(60 + i), 100);
+	CHECK_EQ(e.sounding(), 9);
+	r.clear();
+	e.send(0x9b, 40, 100);
+	CHECK_EQ(r.count(0xa1), 1);
 }
 
 void testControllers() {

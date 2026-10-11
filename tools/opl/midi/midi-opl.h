@@ -242,7 +242,7 @@ private:
 				break;
 			}
 		if (v < 0)
-			v = allocate();
+			v = allocate(ch);
 		Voice &vo = voice_[v];
 		if (vo.keyed || vo.channel != 0xff)
 			put(0xb0 + v, vo.block << 2 | (vo.fnum >> 8));   // key up first: the key-on below is an edge
@@ -296,9 +296,19 @@ private:
 		put(0xb0 + v, vo.block << 2 | (vo.fnum >> 8));
 	}
 
-	// The voice for a new note: one never used, else the one released longest
-	// ago, else the oldest sounding note.
-	int allocate() {
+	// The voice for a new note on channel ch. With nine voices for sixteen
+	// channels a dense song steals constantly, and the oldest sounding note is
+	// most often a long held one or a lead line: the steal goes where it is
+	// least heard. In order, a voice never used; one released, longest ago
+	// first; one only the sustain pedal holds; a drum; a note of the new
+	// note's own channel or of a channel with several notes sounding (a chord
+	// loses a tone); and only then a channel's single note. Within a class the
+	// oldest goes.
+	int allocate(int ch) {
+		uint8_t sounding[kChannels] = { 0 };
+		for (int v = 0; v < kVoices; ++v)
+			if (voice_[v].keyed)
+				++sounding[voice_[v].channel];
 		int best = 0;
 		uint64_t bestScore = ~0ull;
 		for (int v = 0; v < kVoices; ++v) {
@@ -308,8 +318,18 @@ private:
 				score = 0;
 			else if (!vo.keyed)
 				score = 1 + vo.releasedAt;
-			else
-				score = (1ull << 62) + vo.age;
+			else {
+				uint64_t rank;
+				if (vo.held)
+					rank = 0;
+				else if (vo.channel == kPercussionChannel)
+					rank = 1;
+				else if (vo.channel == ch || sounding[vo.channel] > 1)
+					rank = 2;
+				else
+					rank = 3;
+				score = ((1ull << 60) | rank << 56) + vo.age;
+			}
 			if (score < bestScore) {
 				bestScore = score;
 				best = v;
