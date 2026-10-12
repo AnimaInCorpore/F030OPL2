@@ -298,14 +298,14 @@ banks about two. A whole-song 68030 profile under Hatari showed the same
 processor idle three quarters of the time, waiting in `submitSuper` for READY:
 it built period p+1 only after handing over period p.
 
-**Building ahead.** For a file, F030MID now sends the refill request at once,
+**Building ahead.** For a file under plain TOS, F030MID now sends the refill request at once,
 builds further periods (up to 32, half a second, in a 16,384-event pool) while
 it looks for READY between them, and waits only when the queue is full. The
 kernel already allows the gap: after READY it polls for the payload's first
 word between blocks and renders on. Every word sent is what it was, in the
 same order; a stop is taken only between a payload and the next request, so
 no request is left for the closing status command to answer. Live input is
-unchanged.
+unchanged, and so is FreeMiNT (below).
 
 **The decoder's per-write cost.** `Decoder::slotIndex` searched the channel
 table on every operator register write (about 4.5 iterations an average
@@ -334,8 +334,25 @@ frames least slack), live input (257) and the bench and stream gates are
 unchanged. Smoke's three remaining late periods with render-ahead fall two
 periods after a 189-event hit inside a stretch of all nine channels in
 feedback FM: the DSP's limit, taking the payload at the 68030's pace while at
-full load. Not run on hardware or under FreeMiNT, where the waits between
-assemblies are now in user mode until the queue is full.
+full load. Not run on hardware.
+
+**Not under FreeMiNT.** Building ahead returns to user mode between periods,
+where MiNT gives a busy neighbour whole time slices: beside a busy loop the
+demo had 332 late periods of 990 instead of 45, and 345 with the queue held to
+one period (its exchange then split over three `Supexec`s). Under MiNT
+(`Pdomain` answers) the player therefore runs the old loop: each period built,
+then exchanged in one `Supexec`. FreeMiNT 1.19 `648983e1`, memory protection
+off, the demo, render-ahead on, late periods:
+
+| binary | alone | beside a busy loop | busy loop, SIGINT after 10 s |
+| --- | ---: | ---: | ---: |
+| before the queue (`a2df978`), three code layouts | 0 | 45, 43, 43 | 49, 50, 37 |
+| with the queue, the old loop under MiNT | 0 | 50 | 57 |
+
+The three layouts are the same source with only the version string changed:
+Hatari repeats a run exactly, so layout is what moves these counts. The build
+with the queue, 4 KB larger, sits a few periods above that spread from one
+sample; it runs the same loop. Every run stopped cleanly with equal checksums.
 
 ## From F030SID (2026-10-09): host transport and SSI input
 

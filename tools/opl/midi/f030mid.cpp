@@ -17,10 +17,11 @@
 // a reproducible test (Hatari's MIDI input needs PortMidi): midi-gate.py. A
 // MIDIIN.RAW beside the program, when none is named, is taken as that file.
 //
-// A file's periods are built ahead of the DSP, up to 32 of them (half a
-// second), in the time the 68030 would otherwise spend waiting for READY: a
-// dense chord can take it longer to build than the DSP has rendered ahead, and
-// the queue absorbs that. Live input is built and sent one period at a time.
+// Under plain TOS a file's periods are built ahead of the DSP, up to 32 of
+// them (half a second), in the time the 68030 would otherwise spend waiting
+// for READY: a dense chord can take it longer to build than the DSP has
+// rendered ahead, and the queue absorbs that. Under MiNT, and for live input,
+// each period is built and then exchanged in one Supexec, as before.
 //
 // The DSP renders ahead of the codec, block by block as the ring frees, by
 // default when playing a file (-a forces it, -n forbids it): a dense passage
@@ -530,7 +531,13 @@ int main(int argc, char **argv) {
 	long seconds = -1;
 	int ahead = -1;            // -1: the default for the mode; 0 or 1: asked for
 	const char *rawFile = 0;
-	Pdomain(1);                // MiNT semantics (EINVFN under TOS)
+	// MiNT semantics (EINVFN under TOS). Under MiNT a file is built and sent
+	// one period at a time, each exchange in one Supexec: building ahead
+	// returns to user mode between periods, where MiNT gives a busy neighbour
+	// whole time slices, and beside a busy loop the demo then had 332 late
+	// periods instead of 45 (and 345 with the queue held to one period, its
+	// exchange split over three Supexecs).
+	const bool mint = Pdomain(1) >= 0;
 	g_old_terminate = (TerminateVector)Setexc(0x102, (long)onTerminate);
 	signal(SIGINT, onSignal);
 	signal(SIGTERM, onSignal);
@@ -641,8 +648,29 @@ int main(int argc, char **argv) {
 		bool have = smf.next(&m);
 		if (!have)
 			periods = (uint32_t)((kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
-		g_pool = (WireEvent *)malloc(kPoolEvents * sizeof(WireEvent));
-		if (!g_pool) {
+		for (uint32_t p = 0; mint && p < periods && !g_port_failed && !g_stop; ++p) {
+			const uint64_t start = (uint64_t)p * kPeriodFrames, end = start + kPeriodFrames;
+			while (have && m.frame < end) {
+				if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
+					totals.note_ons++;
+				lastFrame = m.frame;
+				g_pipeline.message(m);
+				have = smf.next(&m);
+				if (!have)
+					periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
+			}
+			const unsigned n = g_pipeline.takePeriod(start, g_wire);
+			if (!submit(n, totals))
+				break;
+			if (g_diag && (p < 3 || (p & 1023) == 0)) {
+				printf("period %lu\n", (unsigned long)p);
+				fflush(stdout);
+			}
+			if ((p & 63) == 0 && keyPressed())
+				break;
+		}
+		g_pool = mint ? 0 : (WireEvent *)malloc(kPoolEvents * sizeof(WireEvent));
+		if (!mint && !g_pool) {
 			printf("not enough memory for the period queue\n");
 			stopAudio();
 			return 1;
@@ -651,7 +679,7 @@ int main(int argc, char **argv) {
 		bool requested = false;
 		// A stop is taken only between a payload and the next request: one
 		// outstanding would read the closing status command as its count.
-		while (sent < periods && !g_port_failed) {
+		while (!mint && sent < periods && !g_port_failed) {
 			if (!requested) {
 				Supexec(requestSuper);
 				requested = true;
