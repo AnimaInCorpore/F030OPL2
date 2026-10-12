@@ -192,7 +192,10 @@ allocator, pitch calculation, reader and player are included here.
 
 ## Verification
 
-The published `v0.2.1` player (validated 2026-10-10) passed the same
+The `v0.2.2` player (validated 2026-10-12) passed the packaged-player gates,
+the DSP bench and streams in both modes, the vibrato worst case, four external
+songs in both modes (with render-ahead none late), FreeMiNT against `v0.2.1`
+and Control-C under EmuTOS and TOS 4.02. The published `v0.2.1` player (validated 2026-10-10) passed the same
 gates plus a vibrato worst case, Control-C under EmuTOS and TOS 4.02, and four
 external songs compared with `v0.2.0`. The published `v0.2.0` player passed host
 checks and packaged-player gates on 2026-10-10 (`v0.1.0` on 2026-10-08): the demo in both render-ahead modes and raw live input with it off.

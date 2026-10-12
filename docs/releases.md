@@ -23,21 +23,34 @@ entry to the last RPN (which gave Chariots of Fire a 24-semitone bend range);
 and turns the modulation wheel into a software vibrato. The MIDI engine and
 reader changed with it; the DSP kernel, decoder and transport did not.
 
+`v0.2.2` is packaged from source commit `9989dc0` and validated, not yet
+published. Its player prints its version at start and in its closing summary;
+when all nine voices are busy it takes a released voice, a pedal-held note, a
+drum or a chord tone before a channel's only note, so long notes, solos and
+opening sound effects are no longer cut off; under plain TOS it builds up to
+half a second of periods ahead of the DSP; and the DSP kernel and the 68030's
+decoder do less work per frame and per event. With render-ahead, the four
+external songs play without a late period (v0.2.1: 11 for Smoke on the Water,
+6 for Conga). The engine, decoder, DSP kernel and player changed; the stream
+protocol and the bank did not.
+
 ## Validation records
 
 | Record | Source and scope |
 | --- | --- |
 | [validation.json](validation.json) | Initial 2026-10-05 baseline, before later stream optimizations; historical measurements are preserved. |
 | [current-validation.json](current-validation.json) | Development snapshot of `8961ed6` on 2026-10-08: host checks, five DSP bench cases, one-second stress/rhythm streams in both modes, and MIDI file/raw-live gates. The filename is retained for existing links; this is not the latest packaged release record. |
+| [release-validation-v0.2.2.json](release-validation-v0.2.2.json) | `v0.2.2` at `9989dc0`, validated on 2026-10-12 before publication: packaged player, demo in both modes, raw-live input, DSP bench and stress/rhythm streams in both modes, a vibrato worst case in both modes, four external songs in both modes against `v0.2.1`, FreeMiNT against the published `v0.2.1` player, and Control-C under EmuTOS and TOS 4.02. |
 | [release-validation-v0.2.1.json](release-validation-v0.2.1.json) | Published `v0.2.1` at `076214e`, validated on 2026-10-10 before publication: packaged player, demo in both modes, raw-live input, a vibrato worst case in both modes, Control-C under EmuTOS and TOS 4.02, startup time, and four external songs in both modes against `v0.2.0` on the same files. |
 | [release-validation-v0.2.0.json](release-validation-v0.2.0.json) | Published `v0.2.0` at `1171559`, validated on 2026-10-10: packaged player, generated demo in both render-ahead modes, raw-live input, host checks, uploaded-asset digests, and FreeMiNT measurements on the identical binary. Tester reports are listed separately from validation. |
 | [release-validation.json](release-validation.json) | Published `v0.1.0` at `9dd60bd`, validated on 2026-10-08: packaged player, generated demo in both render-ahead modes, raw-live input, host checks and uploaded-asset digests. |
 | [speed-quality.md](speed-quality.md) and [midi-player.md](midi-player.md#verification) | Dated optimization baselines and external-song corpus results, retained separately from publication tests. |
 
-All three releases' demo rendered 990 periods with checksum 6,797,716 in each mode.
+All four releases' demo rendered 990 periods with checksum 6,797,716 in each mode.
 Raw live input rendered 247 periods with checksum 7,781,472. Every uploaded
 table matched the fixture, no event overflow occurred and no period was late.
-All MIDI host checks passed (158 for `v0.1.0` and `v0.2.0`, 228 for `v0.2.1`);
+All MIDI host checks passed (158 for `v0.1.0` and `v0.2.0`, 228 for `v0.2.1`,
+235 for `v0.2.2`);
 practical-model host checks had zero failures. On four external songs (not
 shipped), `v0.2.1` had as many late periods as `v0.2.0` or fewer in each
 mode: with render-ahead on, none for Smooth and Chariots of Fire, 6 (before 7)

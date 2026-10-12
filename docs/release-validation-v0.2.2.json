@@ -1,0 +1,300 @@
+{
+  "date": "2026-10-12",
+  "release_tag": "v0.2.2",
+  "source_commit": "9989dc08ee34090659b554c89b646e4ffd2f4040",
+  "note": "Pre-publication validation of the packaged v0.2.2 player; not yet published. External songs are the files of the v0.2.1 record (bitmidi.com, identified by SHA-256, not in the repository). Two earlier v0.2.2 packages (34ee9fb, b466e28) were never published: release validation found late periods their fixes address (the vibrato worst case at its start; the start when launched by another program).",
+  "release_url": "https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.2",
+  "prerelease": true,
+  "commands": [
+    "make check",
+    "make midi-release VERSION=v0.2.2",
+    "midi-gate.py release/v0.2.2/DEMO.MID --tos release/v0.2.2/F030MID.TTP --ahead on|off; midi-gate.py build/midi-test/live.bin --raw --tos release/v0.2.2/F030MID.TTP (the package-gate commands)",
+    "rt-bench-gate.py --scenario synthetic; rt-stream-gate.py --scenario stress|rhythm, with and without --render-ahead",
+    "midi-gate.py <vibrato worst case> --tos release/v0.2.2/F030MID.TTP --ahead on|off",
+    "midi-gate.py <song> --tos release/v0.2.2/F030MID.TTP --ahead on|off --vbls 22000",
+    "FreeMiNT harness (minttest 0/1/2) on the packaged player and on the published v0.2.1 player",
+    "Ctrl-C harness (RUNTWICE.TOS) under TOS 4.02 and EmuTOS 512k"
+  ],
+  "environment": "DSP-calibrated Hatari (F030Arcade third_party/hatari, commit 639fadf6), TOS 4.02 unless stated, 14 MB ST-RAM",
+  "host_checks": {
+    "practical_failures": 0,
+    "midi_checks": 235,
+    "midi_failures": 0
+  },
+  "packaged_player_sha256": "27ce1f191640b4f9998fa43c5050acae2aa3eca1c6796d47b5fc50210668ab1f",
+  "package_gates": {
+    "demo_ahead_on": {
+      "periods_submitted": 990,
+      "parameter_events_sent": 2884,
+      "checksum_equal": true,
+      "checksum_dsp": 6797716,
+      "late_periods": 0,
+      "min_slack_frames": 253,
+      "event_overflow": false,
+      "tables_match_fixture": true
+    },
+    "demo_ahead_off": {
+      "periods_submitted": 990,
+      "parameter_events_sent": 2884,
+      "checksum_equal": true,
+      "checksum_dsp": 6797716,
+      "late_periods": 0,
+      "min_slack_frames": 95,
+      "event_overflow": false,
+      "tables_match_fixture": true
+    },
+    "raw_live": {
+      "periods_submitted": 247,
+      "parameter_events_sent": 205,
+      "checksum_equal": true,
+      "checksum_dsp": 7781472,
+      "late_periods": 0,
+      "min_slack_frames": 257,
+      "event_overflow": false,
+      "tables_match_fixture": true
+    }
+  },
+  "vibrato_worst_case": {
+    "input": "generated: nine channels, nine held notes, CC1 = 127, 20 s (sha256 34d63c58...)",
+    "ahead_on": {
+      "periods_submitted": 1408,
+      "parameter_events_sent": 50239,
+      "checksum_equal": true,
+      "checksum_dsp": 12721524,
+      "late_periods": 0,
+      "min_slack_frames": 145,
+      "event_overflow": false,
+      "tables_match_fixture": true
+    },
+    "ahead_off": {
+      "periods_submitted": 1408,
+      "parameter_events_sent": 50239,
+      "checksum_equal": true,
+      "checksum_dsp": 12721524,
+      "late_periods": 0,
+      "min_slack_frames": 57,
+      "event_overflow": false,
+      "tables_match_fixture": true
+    },
+    "v0.2.1": "0 late in both modes, least slack 115 / 55 frames"
+  },
+  "dsp_bench": {
+    "program_words": 2149,
+    "cases": [
+      {
+        "scenario": "stress",
+        "bit_exact": true,
+        "cycles_per_frame": 271.39
+      },
+      {
+        "scenario": "timing",
+        "bit_exact": true,
+        "cycles_per_frame": 279.03
+      },
+      {
+        "scenario": "paths",
+        "bit_exact": true,
+        "cycles_per_frame": 219.37
+      },
+      {
+        "scenario": "phase",
+        "bit_exact": true,
+        "cycles_per_frame": 251.47
+      },
+      {
+        "scenario": "rhythm",
+        "bit_exact": true,
+        "cycles_per_frame": 243.76
+      }
+    ],
+    "v0.2.1_cycles_per_frame": {
+      "stress": 286.87,
+      "timing": 295.46,
+      "paths": 231.64,
+      "phase": 258.51,
+      "rhythm": 254.41
+    }
+  },
+  "streams": {
+    "stress": {
+      "late_periods": 0,
+      "min_slack_frames": 47,
+      "checksum_equal": true,
+      "checksum_dsp": 10510080
+    },
+    "rhythm": {
+      "late_periods": 0,
+      "min_slack_frames": 7,
+      "checksum_equal": true,
+      "checksum_dsp": 4877636
+    },
+    "stress-ahead": {
+      "late_periods": 0,
+      "min_slack_frames": 47,
+      "checksum_equal": true,
+      "checksum_dsp": 10510080
+    },
+    "rhythm-ahead": {
+      "late_periods": 0,
+      "min_slack_frames": 6,
+      "checksum_equal": true,
+      "checksum_dsp": 4877636
+    }
+  },
+  "external_songs": [
+    {
+      "song": "Smoke on the Water (24 tracks; GS NRPN edits, CC1)",
+      "file_sha256": "776477f055036ce8c65c89bf51d86062c6c2bdc47f4c9bc2d81fe744096ab269",
+      "v0.2.1_ahead_on": {
+        "late_periods": 11,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_off": {
+        "late_periods": 344,
+        "min_slack_frames": 0
+      },
+      "v0.2.2_ahead_on": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 318845,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 582,
+        "event_overflow": false
+      },
+      "v0.2.2_ahead_off": {
+        "periods_submitted": 21365,
+        "parameter_events_sent": 318845,
+        "checksum_equal": true,
+        "late_periods": 4,
+        "min_slack_frames": 0,
+        "event_overflow": false
+      }
+    },
+    {
+      "song": "Conga (29 tracks; 150 channel pressure, maracas key 70)",
+      "file_sha256": "0860b468a0b4a8f4a9195abad59e867b1616b012029a4033fdc87fe62a495a03",
+      "v0.2.1_ahead_on": {
+        "late_periods": 6,
+        "min_slack_frames": 0
+      },
+      "v0.2.1_ahead_off": {
+        "late_periods": 203,
+        "min_slack_frames": 0
+      },
+      "v0.2.2_ahead_on": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 267517,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 582,
+        "event_overflow": false
+      },
+      "v0.2.2_ahead_off": {
+        "periods_submitted": 17359,
+        "parameter_events_sent": 267517,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 22,
+        "event_overflow": false
+      }
+    },
+    {
+      "song": "Santana, Smooth (14 tracks; 465 CC1, maracas and guiro keys 70/73/74)",
+      "file_sha256": "12be99028c677564e80c7ea32acf8660cec0dcc7ca6160bdc4f9ab1648d19b44",
+      "v0.2.1_ahead_on": {
+        "late_periods": 0,
+        "min_slack_frames": 432
+      },
+      "v0.2.1_ahead_off": {
+        "late_periods": 16,
+        "min_slack_frames": 0
+      },
+      "v0.2.2_ahead_on": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 161608,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 582,
+        "event_overflow": false
+      },
+      "v0.2.2_ahead_off": {
+        "periods_submitted": 17211,
+        "parameter_events_sent": 161608,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 34,
+        "event_overflow": false
+      }
+    },
+    {
+      "song": "Chariots of Fire (11 tracks; GS NRPN edits after RPN 0)",
+      "file_sha256": "136ef16b25ed99eea75ed3d7deee82d90992f52e907ffc110e06d46bf747b86d",
+      "v0.2.1_ahead_on": {
+        "late_periods": 0,
+        "min_slack_frames": 131
+      },
+      "v0.2.1_ahead_off": {
+        "late_periods": 55,
+        "min_slack_frames": 0
+      },
+      "v0.2.2_ahead_on": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 106714,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 582,
+        "event_overflow": false
+      },
+      "v0.2.2_ahead_off": {
+        "periods_submitted": 13208,
+        "parameter_events_sent": 106714,
+        "checksum_equal": true,
+        "late_periods": 0,
+        "min_slack_frames": 14,
+        "event_overflow": false
+      }
+    }
+  ],
+  "freemint": {
+    "environment": "as v0.2.0's record: --fpu 68882, FreeMiNT 1.19 snapshot 648983e1, MEM_PROT=NO, started by a Pvfork/Pexec(200) test program; the demo song, render-ahead on",
+    "cases": {
+      "alone": {
+        "v0.2.2": "0 late, checksum 6797716",
+        "v0.2.1": "0 late, checksum 6797716"
+      },
+      "beside a busy loop, whole song": {
+        "v0.2.2": "53 late, loop blocks 4252",
+        "v0.2.1": "65 late, loop blocks 4251"
+      },
+      "beside a busy loop, SIGINT after 10 s": {
+        "v0.2.2": "61 late, stopped in 48 ticks of 200 Hz",
+        "v0.2.1": "43 late, stopped in 51 ticks"
+      }
+    },
+    "note": "Under MiNT the player builds and sends one period at a time, as v0.2.1 does. Hatari repeats a run exactly; the same source in different code layouts gave 43-45 and 37-50 late in the busy cases, so these counts move by layout."
+  },
+  "control_c": {
+    "method": "RUNTWICE.TOS Pexecs the packaged player twice with the vibrato song; Ctrl-C injected through Hatari's command FIFO during the first run",
+    "keyed_during_playback": {
+      "TOS 4.02": "first 0, second 0, plays whole song, no late period",
+      "EmuTOS 512k (etos512de.img)": "first 0, second 0, plays whole song, no late period"
+    },
+    "at_diag_pause_with_DSP_locked": {
+      "TOS 4.02": "first -32, second 0, plays whole song, no late period",
+      "EmuTOS 512k (etos512de.img)": "first -32, second 0, plays whole song, no late period"
+    },
+    "development_repeats": "twelve such runs of the source at 9989dc0 had no late period"
+  },
+  "findings": [
+    "With render-ahead (the file default) every external song played without a late period, where v0.2.1 had 11 for Smoke on the Water and 6 for Conga.",
+    "Without render-ahead Smoke on the Water had 4 late periods (v0.2.1: 344); a development build of the same source differing only in its version string had none.",
+    "The voice allocator changes which notes sound in dense songs: outputs differ from v0.2.1's by design, and each is checked against its own host reference."
+  ],
+  "not_established": [
+    "No audio auditioned, from the emulator or the host renders",
+    "No hardware run",
+    "Physical MIDI port input",
+    "FreeMiNT with memory protection, XaAES or live input",
+    "The bank's own short sound-effect and guitar patches and its loudness balance are unchanged"
+  ]
+}
