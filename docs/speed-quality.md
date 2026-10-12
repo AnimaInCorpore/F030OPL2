@@ -358,6 +358,16 @@ DSP checksum equal:
 With render-ahead every external song keeps at least 582 frames (11.8 ms)
 of slack. `song.mid` (253 / 95) and live input (257) are unchanged.
 
+**Not while the DSP fills its ring.** Started by another program (a test
+that runs the player twice from one parent), the vibrato song still had three
+or four late periods under EmuTOS, none without the queue: building ahead
+held the first deliveries back while the DSP was filling its ring. The first
+eight periods now go out one at a time, as before the queue; building ahead
+starts after them. Twelve such runs under TOS 4.02 and EmuTOS had no late
+period, and every song in both modes had none either: Smoke on the Water
+0 / 0 (before 0 / 4), Conga, Smooth and Chariots of Fire 0 / 0, the vibrato
+worst case 0 / 0, `song.mid` and live input unchanged.
+
 **Not under FreeMiNT.** Building ahead returns to user mode between periods,
 where MiNT gives a busy neighbour whole time slices: beside a busy loop the
 demo had 332 late periods of 990 instead of 45, and 345 with the queue held to

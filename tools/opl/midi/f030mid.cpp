@@ -494,6 +494,9 @@ struct Totals {
 enum { kQueuePeriods = 32, kPoolEvents = 16384 };
 // About one engine tick (49,170 / 250 frames): the steps a build looks for READY in.
 const uint64_t kTickSpan = 196;
+// The periods sent one at a time, as before the queue, while the DSP fills its
+// ring at the start: building ahead then held the first deliveries back.
+enum { kPrimePeriods = 8 };
 struct Queued {
 	unsigned first, count;
 };
@@ -741,7 +744,7 @@ int main(int argc, char **argv) {
 			if (stopping || g_port_failed)
 				break;
 			unsigned at;
-			if (built < periods && poolRoom(&at)) {
+			if (built < periods && (built == sent || sent >= kPrimePeriods) && poolRoom(&at)) {
 				const uint64_t start = (uint64_t)built * kPeriodFrames, end = start + kPeriodFrames;
 				uint64_t step = start;
 				while (have && m.frame < end) {
