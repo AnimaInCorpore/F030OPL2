@@ -17,6 +17,11 @@
 // a reproducible test (Hatari's MIDI input needs PortMidi): midi-gate.py. A
 // MIDIIN.RAW beside the program, when none is named, is taken as that file.
 //
+// A file's periods are built ahead of the DSP, up to 32 of them (half a
+// second), in the time the 68030 would otherwise spend waiting for READY: a
+// dense chord can take it longer to build than the DSP has rendered ahead, and
+// the queue absorbs that. Live input is built and sent one period at a time.
+//
 // The DSP renders ahead of the codec, block by block as the ring frees, by
 // default when playing a file (-a forces it, -n forbids it): a dense passage
 // can then borrow the time the quiet ones before it left over, at the price of
@@ -291,6 +296,44 @@ long submitSuper() {
 	return 0;
 }
 
+// File playback splits the exchange so the 68030 can build periods ahead
+// while the DSP renders: the request goes out at once, the READY is looked
+// for between periods (the kernel keeps rendering until the payload's first
+// word arrives), and only a full queue waits for it.
+long requestSuper() {
+	portSend(CMD_REFILL);
+	return 0;
+}
+
+bool g_ready;
+long pollReadySuper() {
+	g_ready = false;
+	if (!(*kHostIsr & 1))
+		return 0;
+	if (portReceive() != REPLY_READY)
+		g_port_failed = true;
+	else
+		g_ready = true;
+	return 0;
+}
+
+long waitReadySuper() {
+	if (portReceive() != REPLY_READY)
+		g_port_failed = true;
+	return 0;
+}
+
+long payloadSuper() {
+	portSend(g_event_count);
+	for (unsigned i = 0; i < g_event_count; ++i) {
+		portSend(g_events[i].address);
+		portSend(g_events[i].value);
+	}
+	portSend(0);   // no PCM: the OPL is the whole song
+	g_ack = portReceive();
+	return 0;
+}
+
 uint32_t g_command_word, g_command_reply;
 long commandSuper() {
 	g_command_reply = portExchange(g_command_word);
@@ -430,6 +473,44 @@ struct Totals {
 	uint32_t late;
 };
 
+// The periods built ahead of the DSP: a ring of up to kQueuePeriods, their
+// events in one pool. A dense chord can take the 68030 longer to build than
+// the two periods the DSP holds rendered; built ahead in the time the
+// waits for READY used to take, it is ready when the DSP asks.
+enum { kQueuePeriods = 32, kPoolEvents = 16384 };
+struct Queued {
+	unsigned first, count;
+};
+Queued g_queue[kQueuePeriods];
+unsigned g_queue_head, g_queue_size;
+WireEvent *g_pool;
+unsigned g_pool_head, g_pool_tail;
+
+// Where the next period's events may go (room for a full DSP table), or false.
+bool poolRoom(unsigned *at) {
+	enum { kNeed = Pipeline::kMaxEventsPerPeriod };
+	if (!g_queue_size)
+		g_pool_head = g_pool_tail = 0;
+	if (g_queue_size == kQueuePeriods)
+		return false;
+	if (!g_queue_size || g_pool_tail >= g_pool_head) {
+		if (kPoolEvents - g_pool_tail >= kNeed) {
+			*at = g_pool_tail;
+			return true;
+		}
+		if (g_pool_head > kNeed) {   // wrap: the start of the pool is free up to the oldest period
+			*at = 0;
+			return true;
+		}
+		return false;
+	}
+	if (g_pool_head - g_pool_tail > kNeed) {
+		*at = g_pool_tail;
+		return true;
+	}
+	return false;
+}
+
 // Submits the period; returns false if the port died.
 bool submit(uint32_t n, Totals &t) {
 	g_events = g_wire;
@@ -560,27 +641,72 @@ int main(int argc, char **argv) {
 		bool have = smf.next(&m);
 		if (!have)
 			periods = (uint32_t)((kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
-		for (uint32_t p = 0; p < periods && !g_port_failed && !g_stop; ++p) {
-			const uint64_t start = (uint64_t)p * kPeriodFrames, end = start + kPeriodFrames;
-			while (have && m.frame < end) {
-				if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
-					totals.note_ons++;
-				lastFrame = m.frame;
-				g_pipeline.message(m);
-				have = smf.next(&m);
-				if (!have)
-					periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
+		g_pool = (WireEvent *)malloc(kPoolEvents * sizeof(WireEvent));
+		if (!g_pool) {
+			printf("not enough memory for the period queue\n");
+			stopAudio();
+			return 1;
+		}
+		uint32_t built = 0, sent = 0;
+		bool requested = false;
+		// A stop is taken only between a payload and the next request: one
+		// outstanding would read the closing status command as its count.
+		while (sent < periods && !g_port_failed) {
+			if (!requested) {
+				Supexec(requestSuper);
+				requested = true;
 			}
-			const unsigned n = g_pipeline.takePeriod(start, g_wire);
-			if (!submit(n, totals))
+			// Build ahead until the DSP has answered or the queue is full;
+			// with nothing built, build the period it will ask for now.
+			unsigned at;
+			if (built < periods && (built == sent || !g_ready) && poolRoom(&at)) {
+				if (built != sent)
+					Supexec(pollReadySuper);
+				if (built == sent || !g_ready) {
+					const uint64_t start = (uint64_t)built * kPeriodFrames, end = start + kPeriodFrames;
+					while (have && m.frame < end) {
+						if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
+							totals.note_ons++;
+						lastFrame = m.frame;
+						g_pipeline.message(m);
+						have = smf.next(&m);
+						if (!have)
+							periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
+					}
+					Queued &q = g_queue[(g_queue_head + g_queue_size) % kQueuePeriods];
+					q.first = at;
+					q.count = g_pipeline.takePeriod(start, g_pool + at);
+					g_pool_tail = at + q.count;
+					++g_queue_size;
+					++built;
+					continue;
+				}
+			}
+			if (!g_ready)
+				Supexec(waitReadySuper);
+			g_ready = false;
+			if (g_port_failed)
 				break;
-			if (g_diag && (p < 3 || (p & 1023) == 0)) {
-				printf("period %lu\n", (unsigned long)p);
+			const Queued &q = g_queue[g_queue_head];
+			g_events = g_pool + q.first;
+			g_event_count = q.count;
+			Supexec(payloadSuper);
+			g_queue_head = (g_queue_head + 1) % kQueuePeriods;
+			if (--g_queue_size)
+				g_pool_head = g_queue[g_queue_head].first;
+			requested = false;
+			totals.periods++;
+			totals.events += g_event_count;
+			totals.late = g_ack >> 12;
+			if (g_diag && (sent < 3 || (sent & 1023) == 0)) {
+				printf("period %lu\n", (unsigned long)sent);
 				fflush(stdout);
 			}
-			if ((p & 63) == 0 && keyPressed())
+			if (g_stop || ((sent & 63) == 0 && keyPressed()))
 				break;
+			++sent;
 		}
+		free(g_pool);
 	} else {
 		MidiStream stream;
 		Message m;

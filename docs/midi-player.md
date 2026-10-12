@@ -21,7 +21,9 @@ F030MID.TTP [song.mid] [-l] [-t seconds] [-i bytes.bin] [-a | -n] [-d]
 - With a file it plays the file plus about two seconds of release tail, then
   returns to the desktop. Playback starts as soon as the DSP is set up: the
   song's length is found while it plays, not by reading the whole file first,
-  which kept long, dense files silent for many seconds. A key requests an early
+  which kept long, dense files silent for many seconds. While it plays, it
+  builds up to half a second of periods ahead of the DSP, so a dense chord
+  that takes the 68030 longer than a period to build does not run late. A key requests an early
   stop; the file path checks the keyboard every 64 periods (about one second).
   Control-C is read as an ordinary key. If the program is ended some other way
   under plain TOS, its terminate vector still stops the stream and releases the

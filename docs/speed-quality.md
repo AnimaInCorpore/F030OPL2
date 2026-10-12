@@ -14,6 +14,7 @@ Contents, in the order the work was done, with where it stands:
 - the removal of the reset-event burst at start (done).
 - the serial carrier stage at eight cycles a frame (done, bit exact).
 - the carrier loaders, the render cursors and the channel boundary's constants (done, bit exact).
+- the 68030 building a file's periods ahead, and its decoder's per-write cost (done, output identical).
 
 The figures below are retained historical F030OPL2 measurements from the
 initial validation and 2026-10-05 optimization work, not fresh runs of the current checkout.
@@ -284,6 +285,57 @@ period in the stream, `midi-gate` and `midi-live-gate` runs. The DSP program
 is 2,149 words. Without render-ahead Smoke now has fewer late periods than
 v0.2.1 (344) with more notes sounding; with it, 6.5 cycles a frame removed one
 of nine, so the rest do not look like steady load. Not run on hardware.
+
+## The 68030 builds ahead (2026-10-12)
+
+The late periods that DSP savings did not reach were the 68030's. With a
+temporary DSP log of the period each late one was counted in, and the 200 Hz
+clock around each period's assembly in F030MID, Smoke on the Water's late
+periods were full-band hits: about 300 parameter events in one period (22
+note-ons, nine voices re-patched at one frame) after quiet ones, which took
+the 68030 up to 45 ms to build. A period plays 15.6 ms, and render-ahead
+banks about two. A whole-song 68030 profile under Hatari showed the same
+processor idle three quarters of the time, waiting in `submitSuper` for READY:
+it built period p+1 only after handing over period p.
+
+**Building ahead.** For a file, F030MID now sends the refill request at once,
+builds further periods (up to 32, half a second, in a 16,384-event pool) while
+it looks for READY between them, and waits only when the queue is full. The
+kernel already allows the gap: after READY it polls for the payload's first
+word between blocks and renders on. Every word sent is what it was, in the
+same order; a stop is taken only between a payload and the next request, so
+no request is left for the closing status command to answer. Live input is
+unchanged.
+
+**The decoder's per-write cost.** `Decoder::slotIndex` searched the channel
+table on every operator register write (about 4.5 iterations an average
+call); it is a 36-entry table now. The dirty masks are built from 32-bit
+shifts, `flush` walks two 32-bit halves only as far as their highest marked
+bit, `takePeriod` filters and packs events in 32-bit arithmetic, the voice
+allocator ranks by a class and a 32-bit key, and the engine keeps the next
+tick's frame instead of recomputing it per message. The host output is
+identical on every song measured (events and checksums), and
+`practical-unit-test` checks the table and masks against their definitions.
+These cut `Decoder::write` from about 890 to 720 cycles a call; most of the
+gain is the queue.
+
+Measured under the calibrated Hatari, every DSP checksum equal to the host's,
+no event overflow; late periods, render-ahead on / off:
+
+| song | after the new voice stealing | DSP savings above | now |
+| --- | ---: | ---: | ---: |
+| Smoke on the Water, 21,365 periods | 20 / 531 | 8 / 257 | 3 / 104 |
+| Conga, 17,359 | 0 / 120 | | 0 / 0 |
+| Smooth, 17,211 | 0 / 7 | | 0 / 0 |
+| Chariots of Fire, 13,208 | 0 / 43 | | 0 / 1 |
+
+v0.2.1 had 11 / 344, 6 / 203, 0 / 16 and 0 / 55. `song.mid` (253 / 95
+frames least slack), live input (257) and the bench and stream gates are
+unchanged. Smoke's three remaining late periods with render-ahead fall two
+periods after a 189-event hit inside a stretch of all nine channels in
+feedback FM: the DSP's limit, taking the payload at the 68030's pace while at
+full load. Not run on hardware or under FreeMiNT, where the waits between
+assemblies are now in user mode until the queue is full.
 
 ## From F030SID (2026-10-09): host transport and SSI input
 
