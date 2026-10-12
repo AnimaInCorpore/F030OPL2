@@ -336,6 +336,28 @@ periods after a 189-event hit inside a stretch of all nine channels in
 feedback FM: the DSP's limit, taking the payload at the 68030's pace while at
 full load. Not run on hardware.
 
+**Answering at once (found in release validation).** The queue as first
+built made the vibrato worst case (nine held notes, wheel at 127) late three
+times at its start, where it had none before. A kernel out of events answers
+a waiting request with READY and then waits for the payload, and the 68030
+looked for READY only between whole periods, most of whose work in that song
+is the engine's 250 Hz ticks inside `takePeriod`. Now a request goes out only
+with a period built to answer it, followed by a look of about a millisecond
+for READY; READY is looked for again between MIDI messages and between the
+engine's ticks, which a build runs a tick's span at a time before
+`takePeriod` (the same writes at the same frames); and built periods go out
+as long as READY keeps coming. Late periods, render-ahead on / off, every
+DSP checksum equal:
+
+| input | first queue | answering at once |
+| --- | ---: | ---: |
+| vibrato worst case, 1,408 periods | 3 / 0 | 0 / 0 (least slack 145 / 90 frames) |
+| Smoke on the Water | 3 / 83 | 0 / 4 |
+| Conga, Smooth, Chariots of Fire | 0 / 0, 0 / 0, 0 / 1 | 0 / 0 each |
+
+With render-ahead every external song keeps at least 582 frames (11.8 ms)
+of slack. `song.mid` (253 / 95) and live input (257) are unchanged.
+
 **Not under FreeMiNT.** Building ahead returns to user mode between periods,
 where MiNT gives a busy neighbour whole time slices: beside a busy loop the
 demo had 332 late periods of 990 instead of 45, and 345 with the queue held to

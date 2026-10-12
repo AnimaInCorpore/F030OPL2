@@ -301,12 +301,25 @@ long submitSuper() {
 // while the DSP renders: the request goes out at once, the READY is looked
 // for between periods (the kernel keeps rendering until the payload's first
 // word arrives), and only a full queue waits for it.
+bool g_ready;
+
+// The request, then a short look for READY (about a millisecond): a kernel
+// out of events answers at once and gets its payload at once; a kernel still
+// rendering answers at its next wait, and the build ahead goes on meanwhile.
 long requestSuper() {
-	portSend(CMD_REFILL);
+	g_ready = false;
+	if (!portSend(CMD_REFILL))
+		return 0;
+	for (int i = 0; i < 2000; ++i)
+		if (*kHostIsr & 1) {
+			if (portReceive() != REPLY_READY)
+				g_port_failed = true;
+			else
+				g_ready = true;
+			break;
+		}
 	return 0;
 }
-
-bool g_ready;
 long pollReadySuper() {
 	g_ready = false;
 	if (!(*kHostIsr & 1))
@@ -479,6 +492,8 @@ struct Totals {
 // the two periods the DSP holds rendered; built ahead in the time the
 // waits for READY used to take, it is ready when the DSP asks.
 enum { kQueuePeriods = 32, kPoolEvents = 16384 };
+// About one engine tick (49,170 / 250 frames): the steps a build looks for READY in.
+const uint64_t kTickSpan = 196;
 struct Queued {
 	unsigned first, count;
 };
@@ -676,45 +691,13 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 		uint32_t built = 0, sent = 0;
-		bool requested = false;
-		// A stop is taken only between a payload and the next request: one
-		// outstanding would read the closing status command as its count.
-		while (!mint && sent < periods && !g_port_failed) {
-			if (!requested) {
-				Supexec(requestSuper);
-				requested = true;
-			}
-			// Build ahead until the DSP has answered or the queue is full;
-			// with nothing built, build the period it will ask for now.
-			unsigned at;
-			if (built < periods && (built == sent || !g_ready) && poolRoom(&at)) {
-				if (built != sent)
-					Supexec(pollReadySuper);
-				if (built == sent || !g_ready) {
-					const uint64_t start = (uint64_t)built * kPeriodFrames, end = start + kPeriodFrames;
-					while (have && m.frame < end) {
-						if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
-							totals.note_ons++;
-						lastFrame = m.frame;
-						g_pipeline.message(m);
-						have = smf.next(&m);
-						if (!have)
-							periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
-					}
-					Queued &q = g_queue[(g_queue_head + g_queue_size) % kQueuePeriods];
-					q.first = at;
-					q.count = g_pipeline.takePeriod(start, g_pool + at);
-					g_pool_tail = at + q.count;
-					++g_queue_size;
-					++built;
-					continue;
-				}
-			}
-			if (!g_ready)
-				Supexec(waitReadySuper);
+		bool requested = false, stopping = false;
+		// The oldest built period goes out the moment READY is seen. A stop
+		// is taken only then, before the next request: one outstanding would
+		// read the closing status command as its count.
+		auto deliver = [&]() {
 			g_ready = false;
-			if (g_port_failed)
-				break;
+			requested = false;
 			const Queued &q = g_queue[g_queue_head];
 			g_events = g_pool + q.first;
 			g_event_count = q.count;
@@ -722,7 +705,8 @@ int main(int argc, char **argv) {
 			g_queue_head = (g_queue_head + 1) % kQueuePeriods;
 			if (--g_queue_size)
 				g_pool_head = g_queue[g_queue_head].first;
-			requested = false;
+			else
+				g_pool_head = g_pool_tail;   // empty, perhaps mid-build: the period being built starts here or at 0
 			totals.periods++;
 			totals.events += g_event_count;
 			totals.late = g_ack >> 12;
@@ -731,8 +715,68 @@ int main(int argc, char **argv) {
 				fflush(stdout);
 			}
 			if (g_stop || ((sent & 63) == 0 && keyPressed()))
-				break;
+				stopping = true;
 			++sent;
+		};
+		// A request goes out only with a period built to answer it, and built
+		// periods go out as long as READY keeps coming. Called often while a
+		// period is built: when the DSP asks, its events must not wait for the
+		// rest of a build (in a steady, dense song it renders only a little
+		// ahead, and a kernel out of events waits for them).
+		auto pump = [&]() {
+			while (!stopping && g_queue_size && !g_port_failed) {
+				if (!requested) {
+					Supexec(requestSuper);
+					requested = true;
+				} else if (!g_ready) {
+					Supexec(pollReadySuper);
+				}
+				if (!g_ready || g_port_failed)
+					return;
+				deliver();
+			}
+		};
+		while (!mint && !stopping && sent < periods && !g_port_failed) {
+			pump();
+			if (stopping || g_port_failed)
+				break;
+			unsigned at;
+			if (built < periods && poolRoom(&at)) {
+				const uint64_t start = (uint64_t)built * kPeriodFrames, end = start + kPeriodFrames;
+				uint64_t step = start;
+				while (have && m.frame < end) {
+					if (m.status != 0xf0 && (m.status & 0xf0) == 0x90 && m.data2)
+						totals.note_ons++;
+					lastFrame = m.frame;
+					g_pipeline.message(m);
+					have = smf.next(&m);
+					if (!have)
+						periods = (uint32_t)((lastFrame + kTailFrames + kPeriodFrames - 1) / kPeriodFrames);
+					pump();
+				}
+				// The engine's 250 Hz ticks (vibrato, drum durations) are most
+				// of a steady period's work: run them a tick's span at a time,
+				// the same writes at the same frames, and look in between.
+				for (step = g_pipeline.engine().time() + kTickSpan; step < end; step += kTickSpan) {
+					g_pipeline.engine().advanceTo(step);
+					pump();
+				}
+				Queued &q = g_queue[(g_queue_head + g_queue_size) % kQueuePeriods];
+				q.first = at;
+				q.count = g_pipeline.takePeriod(start, g_pool + at);
+				g_pool_tail = at + q.count;
+				++g_queue_size;
+				++built;
+				continue;
+			}
+			// the queue is full, or the song is built: wait for READY as before
+			if (!requested || stopping)
+				continue;
+			if (!g_ready)
+				Supexec(waitReadySuper);
+			if (g_port_failed)
+				break;
+			deliver();
 		}
 		free(g_pool);
 	} else {
