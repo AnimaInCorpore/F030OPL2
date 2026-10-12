@@ -2,9 +2,10 @@
   "date": "2026-10-12",
   "release_tag": "v0.2.2",
   "source_commit": "9989dc08ee34090659b554c89b646e4ffd2f4040",
-  "note": "Pre-publication validation of the packaged v0.2.2 player; not yet published. External songs are the files of the v0.2.1 record (bitmidi.com, identified by SHA-256, not in the repository). Two earlier v0.2.2 packages (34ee9fb, b466e28) were never published: release validation found late periods their fixes address (the vibrato worst case at its start; the start when launched by another program).",
+  "note": "Validation of the packaged v0.2.2 player, run before publication; published 2026-10-12 with assets byte-identical to the validated package. External songs are the files of the v0.2.1 record (bitmidi.com, identified by SHA-256, not in the repository). Two earlier v0.2.2 packages (34ee9fb, b466e28) were never published: release validation found late periods their fixes address (the vibrato worst case at its start; the start when launched by another program).",
   "release_url": "https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.2",
   "prerelease": true,
+  "published_at": "2026-10-12T09:12:43Z",
   "commands": [
     "make check",
     "make midi-release VERSION=v0.2.2",
@@ -296,5 +297,32 @@
     "Physical MIDI port input",
     "FreeMiNT with memory protection, XaAES or live input",
     "The bank's own short sound-effect and guitar patches and its loudness balance are unchanged"
+  ],
+  "assets": [
+    {
+      "digest": "sha256:27ce1f191640b4f9998fa43c5050acae2aa3eca1c6796d47b5fc50210668ab1f",
+      "name": "F030MID.TOS",
+      "size": 185935
+    },
+    {
+      "digest": "sha256:27ce1f191640b4f9998fa43c5050acae2aa3eca1c6796d47b5fc50210668ab1f",
+      "name": "F030MID.TTP",
+      "size": 185935
+    },
+    {
+      "digest": "sha256:4ca1135cedb44e2cad54b115c041d2039404d4dd606a039402547824c2020245",
+      "name": "F030OPL2-SOURCE.tar.gz",
+      "size": 209758
+    },
+    {
+      "digest": "sha256:17dba72f1dbb28333049dd54ad84f3b66c738d632699351b3309dba8b041dfd8",
+      "name": "OPL2.ZIP",
+      "size": 218047
+    },
+    {
+      "digest": "sha256:d91b6602ff14eada2fa227c2258435dbbecc20260260d266c70f5d97c5520c23",
+      "name": "SHA256.TXT",
+      "size": 320
+    }
   ]
 }

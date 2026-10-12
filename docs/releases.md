@@ -1,8 +1,8 @@
 # Releases, gate environment and validation
 
-[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.1)
-currently provides the `v0.2.1` prerelease from source commit `076214e`; the
-`v0.2.0` prerelease from `1171559` and the `v0.1.0` prerelease from `9dd60bd`
+[GitHub Releases](https://github.com/AnimaInCorpore/F030OPL2/releases/tag/v0.2.2)
+currently provides the `v0.2.2` prerelease from source commit `9989dc0`; the
+`v0.2.1` prerelease from `076214e`, the `v0.2.0` prerelease from `1171559` and the `v0.1.0` prerelease from `9dd60bd`
 stay published unchanged. `v0.2.0` adds the
 FreeMiNT DSP lock and clean stop on signals, dates the ZIP entries by the
 source commit instead of 1980-01-01, and adds a FreeMiNT section to the
@@ -23,8 +23,7 @@ entry to the last RPN (which gave Chariots of Fire a 24-semitone bend range);
 and turns the modulation wheel into a software vibrato. The MIDI engine and
 reader changed with it; the DSP kernel, decoder and transport did not.
 
-`v0.2.2` is packaged from source commit `9989dc0` and validated, not yet
-published. Its player prints its version at start and in its closing summary;
+`v0.2.2`, published 2026-10-12 from source commit `9989dc0`: its player prints its version at start and in its closing summary;
 when all nine voices are busy it takes a released voice, a pedal-held note, a
 drum or a chord tone before a channel's only note, so long notes, solos and
 opening sound effects are no longer cut off; under plain TOS it builds up to
@@ -40,7 +39,7 @@ protocol and the bank did not.
 | --- | --- |
 | [validation.json](validation.json) | Initial 2026-10-05 baseline, before later stream optimizations; historical measurements are preserved. |
 | [current-validation.json](current-validation.json) | Development snapshot of `8961ed6` on 2026-10-08: host checks, five DSP bench cases, one-second stress/rhythm streams in both modes, and MIDI file/raw-live gates. The filename is retained for existing links; this is not the latest packaged release record. |
-| [release-validation-v0.2.2.json](release-validation-v0.2.2.json) | `v0.2.2` at `9989dc0`, validated on 2026-10-12 before publication: packaged player, demo in both modes, raw-live input, DSP bench and stress/rhythm streams in both modes, a vibrato worst case in both modes, four external songs in both modes against `v0.2.1`, FreeMiNT against the published `v0.2.1` player, and Control-C under EmuTOS and TOS 4.02. |
+| [release-validation-v0.2.2.json](release-validation-v0.2.2.json) | Published `v0.2.2` at `9989dc0`, validated on 2026-10-12 before publication: packaged player, demo in both modes, raw-live input, DSP bench and stress/rhythm streams in both modes, a vibrato worst case in both modes, four external songs in both modes against `v0.2.1`, FreeMiNT against the published `v0.2.1` player, and Control-C under EmuTOS and TOS 4.02. |
 | [release-validation-v0.2.1.json](release-validation-v0.2.1.json) | Published `v0.2.1` at `076214e`, validated on 2026-10-10 before publication: packaged player, demo in both modes, raw-live input, a vibrato worst case in both modes, Control-C under EmuTOS and TOS 4.02, startup time, and four external songs in both modes against `v0.2.0` on the same files. |
 | [release-validation-v0.2.0.json](release-validation-v0.2.0.json) | Published `v0.2.0` at `1171559`, validated on 2026-10-10: packaged player, generated demo in both render-ahead modes, raw-live input, host checks, uploaded-asset digests, and FreeMiNT measurements on the identical binary. Tester reports are listed separately from validation. |
 | [release-validation.json](release-validation.json) | Published `v0.1.0` at `9dd60bd`, validated on 2026-10-08: packaged player, generated demo in both render-ahead modes, raw-live input, host checks and uploaded-asset digests. |
