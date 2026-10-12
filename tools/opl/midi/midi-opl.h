@@ -54,6 +54,7 @@ public:
 		tickCount_ = frame * 512ull / 100700ull;   // the ticks that have already fallen
 		while (frameOfTick(tickCount_ + 1) <= frame)
 			++tickCount_;
+		nextTick_ = frameOfTick(tickCount_ + 1);
 		age_ = 0;
 		vibratoPhase_ = 0;
 		vibratoTick_ = 0;
@@ -127,14 +128,14 @@ public:
 	// 250 Hz ticks that fall between, each stamped at its own frame.
 	void advanceTo(uint64_t frame) {
 		while (now_ < frame) {
-			const uint64_t nextTick = frameOfTick(tickCount_ + 1);
-			if (nextTick > frame) {
+			if (nextTick_ > frame) {
 				now_ = frame;
 				return;
 			}
-			if (nextTick > now_)
-				now_ = nextTick;
+			if (nextTick_ > now_)
+				now_ = nextTick_;
 			++tickCount_;
+			nextTick_ = frameOfTick(tickCount_ + 1);
 			tick();
 		}
 	}
@@ -309,29 +310,36 @@ private:
 		for (int v = 0; v < kVoices; ++v)
 			if (voice_[v].keyed)
 				++sounding[voice_[v].channel];
+		// The class, then the key within it; 32-bit, as 64-bit compares are
+		// slow on the 68030 and a dense chord allocates many voices at once.
+		// (A frame of release wraps after 24 hours.)
 		int best = 0;
-		uint64_t bestScore = ~0ull;
+		unsigned bestClass = ~0u;
+		uint32_t bestKey = ~0u;
 		for (int v = 0; v < kVoices; ++v) {
 			const Voice &vo = voice_[v];
-			uint64_t score;
-			if (vo.channel == 0xff)
-				score = 0;
-			else if (!vo.keyed)
-				score = 1 + vo.releasedAt;
-			else {
-				uint64_t rank;
+			unsigned cls;
+			uint32_t key;
+			if (vo.channel == 0xff) {
+				cls = 0;
+				key = 0;
+			} else if (!vo.keyed) {
+				cls = 1;
+				key = (uint32_t)vo.releasedAt;
+			} else {
 				if (vo.held)
-					rank = 0;
+					cls = 2;
 				else if (vo.channel == kPercussionChannel)
-					rank = 1;
+					cls = 3;
 				else if (vo.channel == ch || sounding[vo.channel] > 1)
-					rank = 2;
+					cls = 4;
 				else
-					rank = 3;
-				score = ((1ull << 60) | rank << 56) + vo.age;
+					cls = 5;
+				key = vo.age;
 			}
-			if (score < bestScore) {
-				bestScore = score;
+			if (cls < bestClass || (cls == bestClass && key < bestKey)) {
+				bestClass = cls;
+				bestKey = key;
 				best = v;
 			}
 		}
@@ -535,6 +543,7 @@ private:
 	RegisterSink *sink_;
 	uint64_t now_;
 	uint64_t tickCount_;
+	uint64_t nextTick_;    // frameOfTick(tickCount_ + 1), kept: it is 64-bit arithmetic on the 68030
 	uint32_t age_;
 	uint16_t vibratoPhase_;
 	uint8_t vibratoTick_;

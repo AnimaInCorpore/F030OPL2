@@ -625,7 +625,32 @@ void checkEventSplits() {
 		fail("mid-block pause advanced control time");
 }
 
+// The decoder's table of operator indices and its dirty-bit masks against
+// what they stand for: the channel slot table and a plain 64-bit shift.
+void checkDecoderTables() {
+	for (int chipSlot = 0; chipSlot < E::kSlots; ++chipSlot) {
+		int expected = -1;
+		for (int c = 0; c < E::kChannels && expected < 0; ++c) {
+			if (E::kChannelSlot[c] == chipSlot)
+				expected = P::slotOfChannel(c, 0);
+			else if (E::kChannelSlot[c] + 3 == chipSlot)
+				expected = P::slotOfChannel(c, 1);
+		}
+		if (P::Decoder::slotIndex(chipSlot) != expected)
+			fail("decoder slot index", chipSlot, P::Decoder::slotIndex(chipSlot), expected);
+	}
+	if (P::Decoder::slotIndex(-1) != -1 || P::Decoder::slotIndex(E::kSlots) != -1)
+		fail("decoder slot index out of range");
+	for (int i = 0; i < E::kSlots; ++i)
+		if (P::Decoder::slotBit(i) != (uint64_t)1 << i)
+			fail("decoder slot bit", i);
+	for (int c = 0; c < E::kChannels; ++c)
+		if (P::Decoder::channelBits(c) != (uint64_t)3 << (2 * c))
+			fail("decoder channel bits", c);
+}
+
 int main() {
+	checkDecoderTables();
 	const unsigned long pitches = checkPitch();
 	unsigned long settled = 0;
 	const unsigned long levels = checkSustainLevel(&settled);

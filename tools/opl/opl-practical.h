@@ -907,15 +907,16 @@ struct Decoder {
 		out->write(atBlock, SC_RHYTHM, shadowRhythm);
 	}
 
-	// Chip slot index from the OPL register slot number.
+	// Chip slot index from the OPL register slot number: in each group of six
+	// slots, three channels' modulators and then their carriers. A table,
+	// since every operator register write asks (practical-unit-test checks
+	// it against kChannelSlot).
 	static int slotIndex(int chipSlot) {
-		for (int c = 0; c < kChannels; ++c) {
-			if (OplKernel::kChannelSlot[c] == chipSlot)
-				return slotOfChannel(c, 0);
-			if (OplKernel::kChannelSlot[c] + 3 == chipSlot)
-				return slotOfChannel(c, 1);
-		}
-		return -1;
+		static const int8_t kIndex[kSlots] = {
+			0, 2, 4, 1, 3, 5, 6, 8, 10, 7, 9, 11, 12, 14, 16, 13, 15, 17,
+			18, 20, 22, 19, 21, 23, 24, 26, 28, 25, 27, 29, 30, 32, 34, 31, 33, 35
+		};
+		return chipSlot >= 0 && chipSlot < kSlots ? kIndex[chipSlot] : -1;
 	}
 
 	void emitOp(int index, int offset, int32_t value) {
@@ -1025,8 +1026,14 @@ struct Decoder {
 
 	// What a write marks: one operator, or both of a channel, or every
 	// operator a channel count reaches.
-	static uint64_t slotBit(int index) { return (uint64_t)1 << index; }
-	static uint64_t channelBits(int c) { return (uint64_t)3 << (2 * c); }
+	// A 64-bit shift by a variable count is a library call on the 68030; two
+	// 32-bit ones are an instruction each.
+	static uint64_t slotBit(int index) {
+		return index < 32 ? (uint64_t)((uint32_t)1 << index) : (uint64_t)((uint32_t)1 << (index - 32)) << 32;
+	}
+	static uint64_t channelBits(int c) {
+		return 2 * c < 32 ? (uint64_t)((uint32_t)3 << (2 * c)) : (uint64_t)((uint32_t)3 << (2 * c - 32)) << 32;
+	}
 	uint64_t allBits() const { return channels * 2 >= 64 ? ~(uint64_t)0 : (((uint64_t)1 << (channels * 2)) - 1); }
 
 	// Derives every marked word, stamped with the block that marked it.
@@ -1034,18 +1041,25 @@ struct Decoder {
 		const uint64_t any = dirtyIncrement | dirtyEnvelope | dirtySlot;
 		if (!any)
 			return;
-		// The bit steps along rather than being shifted into place: a 64-bit
-		// shift by a variable count is a library call on the 68030.
-		uint64_t bit = 1;
-		for (int index = 0; index < kSlots; ++index, bit <<= 1) {
-			if (!(any & bit))
-				continue;
-			if (dirtyIncrement & bit)
-				updateIncrement(index);
-			if (dirtyEnvelope & bit)
-				updateEnvelope(index);
-			if (dirtySlot & bit)
-				updateSlot(index);
+		// In two 32-bit halves, each walked only as far as its highest marked
+		// bit: 64-bit arithmetic is several instructions on the 68030, and a
+		// note marks one or two operators of the nine channels' eighteen.
+		for (int half = 0; half < 2; ++half) {
+			const int shift = 32 * half;
+			uint32_t increments = (uint32_t)(dirtyIncrement >> shift);
+			uint32_t envelopes = (uint32_t)(dirtyEnvelope >> shift);
+			uint32_t slots = (uint32_t)(dirtySlot >> shift);
+			for (int index = shift; increments | envelopes | slots; ++index) {
+				if (increments & 1)
+					updateIncrement(index);
+				if (envelopes & 1)
+					updateEnvelope(index);
+				if (slots & 1)
+					updateSlot(index);
+				increments >>= 1;
+				envelopes >>= 1;
+				slots >>= 1;
+			}
 		}
 		dirtyIncrement = dirtyEnvelope = dirtySlot = 0;
 	}

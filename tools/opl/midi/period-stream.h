@@ -85,15 +85,20 @@ public:
 		if (engine_.time() < periodEnd)
 			engine_.advanceTo(periodEnd);
 		decoder_.flush();
+		// The decoder's frames are 32-bit, and so is this arithmetic: 64-bit
+		// compares cost the 68030 several instructions an event, and a dense
+		// chord sends hundreds of events in one period.
+		const uint32_t start = (uint32_t)periodStart, end = (uint32_t)periodEnd;
 		unsigned taken = 0, kept = 0;
 		for (unsigned i = 0; i < count_; ++i) {
 			const OplPractical::Event &e = pending_[i];
-			if (e.frame < periodEnd && taken < kMaxEventsPerPeriod) {
-				out[taken].address = OplPractical::packEvent((uint32_t)(e.frame - periodStart), e.address);
+			const bool due = (int32_t)(e.frame - end) < 0;
+			if (due && taken < kMaxEventsPerPeriod) {
+				out[taken].address = OplPractical::packEvent(e.frame - start, e.address);
 				out[taken].value = (uint32_t)e.value & 0xffffff;
 				++taken;
 			} else {
-				if (e.frame < periodEnd)
+				if (due)
 					overflowed_ = true;   // more events than one DSP table holds: dropped
 				pending_[kept++] = e;
 			}
