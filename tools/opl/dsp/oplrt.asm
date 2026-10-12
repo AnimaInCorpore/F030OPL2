@@ -969,39 +969,33 @@ render_channels:
         move    #>GAIN_RING,a
         move    a1,x:render_gain
         move    #>$3ff,y1
+        ; each load of an address register is a useful instruction ahead of its use
         do      x:channel_count,rc_done
         move    x:render_ch,r0
         move    #<CHR_ROUTE,n0
-        nop
-        move    x:(r0+n0),n1
         move    #>ROUTE_TABLE,r1
-        nop
+        move    x:(r0+n0),n1
+        move    x:(r0),r2               ; CHR_MODE
         move    x:(r1+n1),a
         move    a1,x:render_mix
-        move    x:(r0),r0
-        nop
-        jsr     (r0)
+        jsr     (r2)
+        ; the five cursors: a channel record and a pair of render records are
+        ; the same stride, so one constant serves both
         move    x:render_ch,a
         move    #>CH_STRIDE,x0
-        add     x0,a
-        move    a1,x:render_ch
-        move    x:render_rt,a
-        move    #>2*RT_STRIDE,x0
-        add     x0,a
-        move    a1,x:render_rt
+        add     x0,a      x:render_rt,b
+        add     x0,b      a1,x:render_ch
         move    x:render_op,a
+        move    b1,x:render_rt
         move    #>2*OP_STRIDE,x0
-        add     x0,a
+        add     x0,a      x:render_hist,r2
         move    a1,x:render_op
-        move    x:render_hist,a
-        move    #>1,x0
-        add     x0,a
-        move    a1,x:render_hist
-        move    x:render_gain,a
-        move    #>2,x0
-        add     x0,a
-        move    a1,x:render_gain
-        nop
+        move    x:render_gain,r4
+        move    (r2)+
+        move    (r4)+
+        move    (r4)+
+        move    r2,x:render_hist
+        move    r4,x:render_gain
 rc_done:
         rts
 
@@ -1048,6 +1042,30 @@ load_carrier:                           ; y0 = mix gain
         move    x:(r1)+,r0
         rts
 
+; After a modulator's loader and stage, r1 is already past the modulator's
+; four render words, on the carrier's, and r7 holds the modulator's record:
+; the carrier's is one stride on, so neither address is computed again.
+; (No stage moves r1 or r7, and n7 belongs to op_boundary, which loads it.)
+load_next_carrier:                      ; y0 = mix gain
+        move    #>OP_STRIDE,n7
+        move    x:(r1)+,x1
+        move    (r7)+n7
+        move    x:(r1)+,y0
+        move    l:(r7),b10
+        move    x:(r1)+,a
+        move    x:(r1)+,r0
+        rts
+
+load_next_carrier_x0:                   ; x0 = mix gain, for the serial stage
+        move    #>OP_STRIDE,n7
+        move    x:(r1)+,x1
+        move    (r7)+n7
+        move    x:(r1)+,x0
+        move    l:(r7),b10
+        move    x:(r1)+,a
+        move    x:(r1)+,r0
+        rts
+
 load_carrier_x0:                        ; x0 = mix gain, for the serial stage
         move    x:render_op,a
         move    #>OP_STRIDE,x0
@@ -1078,25 +1096,25 @@ mode_carrier_only:
 mode_fm_fb:
         jsr     load_mod_ring
         jsr     stage_mod_fb
-        jsr     load_carrier_x0
+        jsr     load_next_carrier_x0
         jmp     stage_serial_mix
 
 mode_fm_plain:
         jsr     load_mod_ring
         jsr     stage_mod_plain
-        jsr     load_carrier_x0
+        jsr     load_next_carrier_x0
         jmp     stage_serial_mix
 
 mode_add_fb:
         jsr     load_mod
         jsr     stage_mod_fb_mix
-        jsr     load_carrier
+        jsr     load_next_carrier
         jmp     stage_indep_mix
 
 mode_add_plain:
         jsr     load_mod
         jsr     stage_indep_mix
-        jsr     load_carrier
+        jsr     load_next_carrier
         jmp     stage_indep_mix
 
 mode_mod_only_fb:
@@ -1698,15 +1716,14 @@ cb_clear_history:
         move    b1,y:(r5)
         jmp     cb_store
 cb_store_pair:
+        move    #<1,n4
         move    x:ob_gainfb_mod,x1
         move    x1,y:(r4)
-        move    #>1,n4
-        nop
         move    x0,y:(r4+n4)
 cb_store:
         move    a1,x:(r2)               ; CHR_MODE
-        move    #>CH_STRIDE,n2
-        move    #>2,n4
+        move    #<CH_STRIDE,n2
+        move    #<2,n4
         move    (r2)+n2
         move    (r4)+n4
         move    (r5)+

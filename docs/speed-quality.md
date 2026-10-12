@@ -13,6 +13,7 @@ Contents, in the order the work was done, with where it stands:
   off by default, on when F030MID plays a file);
 - the removal of the reset-event burst at start (done).
 - the serial carrier stage at eight cycles a frame (done, bit exact).
+- the carrier loaders, the render cursors and the channel boundary's constants (done, bit exact).
 
 The figures below are retained historical F030OPL2 measurements from the
 initial validation and 2026-10-05 optimization work, not fresh runs of the current checkout.
@@ -250,6 +251,39 @@ host reference and every stream and MIDI checksum unchanged:
 The "before" Smoke figures are with the new voice stealing; v0.2.1 had 11 and
 344. Smoke is still late in both modes, so this is headroom, not a fix. The DSP
 program shrank from 2,148 to 2,147 words. Nothing has run on hardware.
+
+## Render bookkeeping (2026-10-11)
+
+Three smaller savings outside the per-frame loops, measured the same way:
+
+- **Carrier loaders.** After a modulator's loader and stage, `r1` already
+  points at the carrier's render words and `r7` at the modulator's record, one
+  stride before the carrier's. `load_next_carrier` and `load_next_carrier_x0`
+  use them instead of computing both addresses again, in the four modes that
+  run a modulator first. No stage moves `r1` or `r7`; `n7` is `op_boundary`'s,
+  which loads it before each use.
+- **Render cursors.** `render_channels` spent three `nop`s on address-register
+  hazards and five load-add-store sequences on its cursors. The mode address
+  now goes to `r2` so the loads fill the hazards; the channel and render
+  cursors share one stride constant with parallel loads and stores; the
+  history and gain cursors step by address-register increments.
+- **Channel boundary.** Short immediates for the three address-register
+  constants of `cb_store`/`cb_store_pair`, and the `n4` load moved ahead to
+  retire a hazard `nop`.
+
+| case | before | after |
+| --- | ---: | ---: |
+| bench stress, timing, paths, cycles/frame | 277.87, 286.46, 224.87 | 271.39, 279.03, 219.37 |
+| bench phase, rhythm, cycles/frame | 257.21, 249.23 | 251.47, 243.76 |
+| stress stream min slack; rhythm stream min slack | 32; 0 frames | 47; 7 frames |
+| `song.mid` min slack, render-ahead / off; live input | 240 / 79; 243 | 253 / 95; 257 |
+| Smoke on the Water late periods, render-ahead / off | 9 / 368 | 8 / 257 |
+
+Every bench case word exact, every stream and MIDI checksum unchanged, no late
+period in the stream, `midi-gate` and `midi-live-gate` runs. The DSP program
+is 2,149 words. Without render-ahead Smoke now has fewer late periods than
+v0.2.1 (344) with more notes sounding; with it, 6.5 cycles a frame removed one
+of nine, so the rest do not look like steady load. Not run on hardware.
 
 ## From F030SID (2026-10-09): host transport and SSI input
 
