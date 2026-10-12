@@ -23,7 +23,9 @@ Use your own filename to play another .MID file.
 A key requests a stop (polled about once a second for files).
 Ctrl-C counts as a key. However the player ends, it hands the DSP
 and the sound system back, so the next start finds them free.
-Playback starts at once, also for long, dense files.
+Playback starts at once, also for long, dense files. Under plain TOS
+the player prepares up to half a second ahead, so dense chords play on
+time; the very densest songs can still drop out briefly.
 Files end after about two seconds of release tail.
 The first and the last line on screen show the player's version.
 With no parameters it checks MIDIIN.RAW first, then SONG.MID, then
@@ -56,14 +58,19 @@ The player runs under FreeMiNT. It locks the DSP and the sound system,
 and Ctrl-C (SIGINT) or SIGTERM stops it cleanly like a key. It plays
 well on an otherwise idle system. A busy program beside it causes
 dropouts: the DSP buffers only about 31 ms of audio, less than one MiNT
-time slice. Tested in an emulator only, with memory protection off.
+time slice. Under FreeMiNT the player prepares one period at a time,
+as preparing ahead made such dropouts worse there. Tested in an
+emulator only, with memory protection off.
 
 LIMITS AND VALIDATION
 Nine simultaneous voices, mono OPL2 synthesis sent to stereo audio.
 SMF formats 0/1 and single-track format 2 with ticks-per-quarter timing
 are supported, reading at most 64 tracks and loading the file into RAM.
 There is no file looping or SMPTE timing support.
-Drums share the nine voices with the music. Aftertouch is ignored.
+Drums share the nine voices with the music. When all nine are busy, a
+new note takes a released voice, a pedal-held note, a drum or a chord
+tone before a channel's only note, so held notes and solos keep
+sounding. Aftertouch is ignored.
 The modulation wheel sets the depth of a vibrato of up to half a
 semitone. Fine and coarse tuning (RPN 1 and 2) are followed.
 Host checks and calibrated-emulator MIDI gates pass with equal aggregate
