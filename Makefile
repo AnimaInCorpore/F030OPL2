@@ -34,7 +34,7 @@ M68K_CXX ?= m68k-atari-mintelf-g++
 # what git says about the checkout.
 MIDI_VERSION := $(if $(VERSION),$(VERSION),$(shell git describe --tags --always --dirty 2>/dev/null || echo unknown))
 MIDI := $(OPL)/midi
-MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
+MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h $(MIDI)/gm-bank-tuning.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
 .PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav midi-hatari
 all: dsp ref midi-host
 

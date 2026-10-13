@@ -22,7 +22,7 @@
 
 #include <stdint.h>
 
-#include "gm-bank.h"
+#include "gm-bank-tuning.h"
 
 namespace OplMidi {
 
@@ -81,6 +81,7 @@ public:
 			vo.releasedAt = 0;
 			vo.remaining = 0;
 			vo.patch = 0;
+			vo.trim = 0;
 			vo.vol1 = vo.vol2 = 0;
 			vo.fnum = 0;
 			vo.block = 0;
@@ -164,6 +165,7 @@ private:
 		uint64_t releasedAt;
 		int remaining;       // percussion: ticks of the patch's duration left, else 0
 		const Patch *patch;
+		int8_t trim;         // the program's level trim (gm-bank-tuning.h)
 		uint8_t vol1, vol2;  // the instrument's own levels plus velocity, before channel volume
 		uint16_t fnum;
 		uint8_t block;
@@ -232,7 +234,7 @@ private:
 				return;
 			patch = &kGmPercussion[key];
 		} else {
-			patch = &kGmMelodic[channel_[ch].program];
+			patch = gmMelodicPatch(channel_[ch].program);
 		}
 		// A key already sounding the same note on this channel is retriggered
 		// on its own voice.
@@ -253,6 +255,7 @@ private:
 		vo.held = false;
 		vo.age = ++age_;
 		vo.patch = patch;
+		vo.trim = ch == kPercussionChannel ? 0 : kGmMelodicTrim[channel_[ch].program];
 		vo.remaining = (ch == kPercussionChannel && patch->duration) ? (patch->duration * 63 + 16) / 17 : 0;
 
 		int v1 = (patch->modLevel & 0x3f) + scale(velocity >> 1, patch->modWaveform >> 2);
@@ -262,12 +265,12 @@ private:
 
 		const int o1 = opOffset(v, 0), o2 = opOffset(v, 1);
 		put(0x20 + o1, patch->modCharacteristic);
-		put(0x40 + o1, levelRegister(patch->modLevel, modulatorVolume(vo, channel_[ch])));
+		put(0x40 + o1, levelRegister(patch->modLevel, modulatorVolume(vo, channel_[ch]), modulatorTrim(vo)));
 		put(0x60 + o1, ~patch->modAttackDecay & 0xff);
 		put(0x80 + o1, ~patch->modSustainRelease & 0xff);
 		put(0xe0 + o1, patch->modWaveform);
 		put(0x20 + o2, patch->carCharacteristic);
-		put(0x40 + o2, levelRegister(patch->carLevel, carrierVolume(vo, channel_[ch])));
+		put(0x40 + o2, levelRegister(patch->carLevel, carrierVolume(vo, channel_[ch]), vo.trim));
 		put(0x60 + o2, ~patch->carAttackDecay & 0xff);
 		put(0x80 + o2, ~patch->carSustainRelease & 0xff);
 		put(0xe0 + o2, patch->carWaveform);
@@ -361,8 +364,19 @@ private:
 	static int channelVolume(const Channel &ch) {
 		return ((ch.volume * ch.expression) / 127) >> 2;
 	}
-	static int levelRegister(int patchLevel, int volume) {
-		return ((patchLevel | 0x3f) - volume) & 0xff;
+	// The key scale bits, and the attenuation the volume leaves plus the
+	// program's trim, held to the register's range.
+	static int levelRegister(int patchLevel, int volume, int trim) {
+		int attenuation = 0x3f - volume + trim;
+		if (attenuation < 0)
+			attenuation = 0;
+		else if (attenuation > 0x3f)
+			attenuation = 0x3f;
+		return (patchLevel & 0xc0) | attenuation;
+	}
+	// The trim reaches the modulator only where it is heard: the additive connection.
+	static int modulatorTrim(const Voice &vo) {
+		return (vo.patch->feedback & 1) ? vo.trim : 0;
 	}
 
 	void refreshLevels(int ch) {
@@ -370,8 +384,8 @@ private:
 			Voice &vo = voice_[v];
 			if (vo.channel != ch || !vo.patch)
 				continue;
-			put(0x40 + opOffset(v, 0), levelRegister(vo.patch->modLevel, modulatorVolume(vo, channel_[ch])));
-			put(0x40 + opOffset(v, 1), levelRegister(vo.patch->carLevel, carrierVolume(vo, channel_[ch])));
+			put(0x40 + opOffset(v, 0), levelRegister(vo.patch->modLevel, modulatorVolume(vo, channel_[ch]), modulatorTrim(vo)));
+			put(0x40 + opOffset(v, 1), levelRegister(vo.patch->carLevel, carrierVolume(vo, channel_[ch]), vo.trim));
 		}
 	}
 
