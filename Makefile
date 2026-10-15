@@ -35,7 +35,7 @@ M68K_CXX ?= m68k-atari-mintelf-g++
 MIDI_VERSION := $(if $(VERSION),$(VERSION),$(shell git describe --tags --always --dirty 2>/dev/null || echo unknown))
 MIDI := $(OPL)/midi
 MIDI_HEADERS := $(MIDI)/midi-opl.h $(MIDI)/midi-file.h $(MIDI)/period-stream.h $(MIDI)/opl-upload.h $(MIDI)/gm-bank.h $(MIDI)/gm-bank-tuning.h 	$(OPL)/opl-practical.h $(OPL)/opl-kernel.h $(OPL)/opl-tables.h $(OPL)/opl-practical-tables.h
-.PHONY: all tools dsp ref check dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav midi-hatari
+.PHONY: all tools dsp ref check opldec-gate dsp-gate stream-gate rhythm-gate midi-host midi-tos midi-gate midi-live-gate midi-wav midi-hatari
 all: dsp ref midi-host
 
 tools: $(VASM) $(VLINK)
@@ -135,3 +135,7 @@ package-gate: midi-release midi-host
 	$(PYTHON) $(OPL)/midi-gate.py release/$(VERSION)/DEMO.MID --tos release/$(VERSION)/F030MID.TTP --ahead on --output build/package-gate-on
 	$(PYTHON) $(OPL)/midi-gate.py release/$(VERSION)/DEMO.MID --tos release/$(VERSION)/F030MID.TTP --ahead off --output build/package-gate-off
 	$(PYTHON) $(OPL)/midi-gate.py build/midi-test/live.bin --raw --tos release/$(VERSION)/F030MID.TTP --output build/package-gate-live
+
+# The 68k register decoder (tools/opl/m68k/opldec.s) against the C++ one.
+opldec-gate: tools
+	VASM=$(VASM) VLINK=$(VLINK) $(PYTHON) $(OPL)/opldec-gate.py

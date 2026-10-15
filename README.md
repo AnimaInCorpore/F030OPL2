@@ -114,6 +114,11 @@ model differences, table generation, licensing and verification boundaries.
 
 - `tools/opl/dsp/oplrt.asm`: production DSP synthesis and SSI transport.
 - `tools/opl/m68k/oplplay.s`: standalone 68030 stream host.
+- `tools/opl/m68k/opldec.s`, `oplhost.s`: the register decoder and an
+  interrupt-driven stream host for assembly programs that make OPL2 writes
+  themselves ([68k host](docs/68k-host.md)); `tools/opl/opldec-gate.py` holds
+  the decoder to the C++ one, `tools/opl/opl-upload-image.cpp` writes the
+  upload image it boots from.
 - `tools/opl/opl-practical.h`: register decoder and practical host oracle.
 - `tools/opl/opl-kernel.h`: exact host reference.
 - `tools/opl/midi/`: the MIDI player: engine (`midi-opl.h`), SMF and live-stream
